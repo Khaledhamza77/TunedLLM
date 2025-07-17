@@ -28,7 +28,6 @@ class LLMSwarm:
         self.ports = ["11434", "11435", "11436", "11437"]
         self.executables = []
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-        os.makedirs(f"{self.root}/data/jobs", exist_ok=True)
 
     def run(self):
         self.parallelize()
@@ -67,7 +66,7 @@ class LLMSwarm:
 
     def concat_batches(self):
         if self.chunk_scoring:
-            parquet_files = sorted(glob.glob(f"{self.root}/data/papers/chunks_*.parquet"))
+            parquet_files = sorted(glob.glob(f"{self.root}/chunks_*.parquet"))
             if not parquet_files:
                 logging.warning(f"No chunks parquet files found to concatenate.")
                 return
@@ -75,7 +74,7 @@ class LLMSwarm:
             df_list = [pd.read_parquet(f) for f in parquet_files]
             combined_df = pd.concat(df_list, ignore_index=True)
             combined_df.reset_index(drop=True, inplace=True)
-            output_path = f"{self.root}/data/papers/chunks.parquet"
+            output_path = f"{self.root}/chunks.parquet"
             try:
                 combined_df.to_parquet(output_path, index=False)
                 logging.info(f"Combined chunks saved to {output_path}")
@@ -90,7 +89,7 @@ class LLMSwarm:
                     logging.error(f"Failed to delete {f}: {e}")
             return output_path
         elif self.chunk_to_qa:
-            json_files = sorted(glob.glob(f"{self.root}/data/dataset_*.json"))
+            json_files = sorted(glob.glob(f"{self.root}/dataset_*.json"))
             if not json_files:
                 logging.warning(f"No training batches found to concatenate")
                 return
@@ -102,7 +101,7 @@ class LLMSwarm:
                         training_dataset.extend(data)
                 except Exception as e:
                     logging.error("Failed to concatenate json files: " + str(e))
-            path = f"{self.root}/data/dataset.json"
+            path = f"{self.root}/dataset.json"
             try:
                 training_dataset.to_json(path, orient="records")
                 logging.info(f"combined training dataset saved to {path}")
@@ -115,7 +114,7 @@ class LLMSwarm:
 
     def parallelize(self):
         if self.chunk_scoring:
-            data_path = f"{self.chunk_scoring}/metadata.parquet"
+            data_path = self.chunk_scoring
             logging.info("Batching metadata for chunking and scoring...")
         elif self.chunk_to_qa:
             data_path = self.chunk_to_qa
@@ -127,14 +126,14 @@ class LLMSwarm:
         start_idx = 0
         self.setup_worker()
         for i in tqdm(range(self.n_jobs)):
-            os.makedirs(f"{self.root}/data/jobs/batch_{i}", exist_ok=True)
+            os.makedirs(f"{self.root}/jobs/batch_{i}", exist_ok=True)
             end_idx = start_idx + rows_per_split
             if i == self.n_jobs - 1:
                 end_idx += remainder
             df2 = df.iloc[start_idx:end_idx]
             df2.reset_index(inplace=True, drop=True)
             df2.to_parquet(
-                f'{self.root}/data/jobs/batch_{i}/data.parquet'
+                f'{self.root}/jobs/batch_{i}/data.parquet'
             )
             start_idx = end_idx
             self.write_worker(i)
@@ -143,7 +142,7 @@ class LLMSwarm:
         logging.info('Successfully batched metadata and created workers.')
     
     def write_worker(self, i: int):
-        worker_path = f"{self.root}/data/jobs/batch_{i}/worker.py"
+        worker_path = f"{self.root}/jobs/batch_{i}/worker.py"
         self.executables.append(worker_path)
         with open(worker_path, "w") as worker:
             worker.write(self.worker_script.format(self=self, i=i))
@@ -159,9 +158,9 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info("worker " + str({i}) + " started")
-    worker_dir = f"{self.root}/data/jobs/batch_{i}"
+    worker_dir = f"{self.root}/jobs/batch_{i}"
     df = pd.read_parquet(worker_dir + "/data.parquet")
-    llm = LLM(model_name="{self.model_name}", port="{self.ports[i]}")"""
+    llm = LLM(root_dir=None, model_name="{self.model_name}", port="{self.ports[i]}")"""
         if self.chunk_scoring:
             self.worker_script += """
     result_df = pd.DataFrame()
@@ -172,7 +171,7 @@ if __name__ == "__main__":
         is_separator_regex=False,
     )
     for _, row in df.iterrows():
-        with open(f"{self.root}/data/papers/full_texts/{row['id']}.txt", 'r', encoding='utf-8') as f:
+        with open(f"{self.root}/full_texts/{row['id']}.txt", 'r', encoding='utf-8') as f:
             full_text = f.read()
         chunks = text_splitter.split_text(full_text)
         for chk_idx, chunk in enumerate(chunks):
@@ -188,7 +187,7 @@ if __name__ == "__main__":
                 ignore_index=True
             )
     try:
-        result_df.to_parquet(f"{self.root}/data/papers/chunks_{i}.parquet", index=False)
+        result_df.to_parquet(f"{self.root}/chunks_{i}.parquet", index=False)
         logging.info("Chunking completed.")
     except Exception as e:
         logging.error("Error saving chunks to parquet: " + str(e))"""
@@ -196,7 +195,7 @@ if __name__ == "__main__":
             self.worker_script += """
     train_dataset = []
     train_system_message = str({self.train_prompt})
-    path = f"{self.root}/data/papers/dataset_{i}.json"
+    path = f"{self.root}/dataset_{i}.json"
     for _, row in df.iterrows():
         qa_pairs = llm.chunk_to_qa(
             chunk=row['chunk'],

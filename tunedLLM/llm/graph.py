@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import subprocess
+import numpy as np
 import pandas as pd
 from uuid import uuid4
 from .agent import LLM
@@ -83,12 +84,12 @@ class Graph:
             for i, query in enumerate(search_queries_list):
                 core.scroll(query, ceiling=ceilings[i], i=i)
             core.concat_metadata()
-            state["path_to_relevant_papers"] = f"{self.root}/data/papers"
+            state["path_to_relevant_papers"] = f"{self.root}/{state['run_id']}/data/metadata.parquet"
             state["job_status"] = "success"
             self.logs.update('path_to_relevant_papers', state)
             logging.info("Papers and their metadata retrieved successfully.")
         except Exception as e:
-            state["path_to_relevant_papers"] = ""
+            state["path_to_relevant_papers"] = np.nan
             state["job_status"] = "failure"
             logging.error(f"Error retrieving papers: {e}")
         return state
@@ -146,7 +147,7 @@ class Graph:
     def chunk(self, state: AgentState) -> AgentState:
         state["job"] = "chunk_and_score"
         proto_db = pd.DataFrame()
-        metadata = pd.read_parquet(f"{state['path_to_relevant_papers']}/metadata.parquet")
+        metadata = pd.read_parquet(state['path_to_relevant_papers'])
         text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=500,
             chunk_overlap=20,
@@ -154,7 +155,7 @@ class Graph:
             is_separator_regex=False,
         )
         for _, row in metadata.iterrows():
-            with open(f"{self.root}/data/papers/full_texts/{row['id']}.txt", 'r', encoding='utf-8') as f:
+            with open(f"{self.root}/{state['run_id']}/data/full_texts/{row['id']}.txt", 'r', encoding='utf-8') as f:
                 full_text = f.read()
             chunks = text_splitter.split_text(full_text)
             for chk_idx, chunk in enumerate(chunks):
@@ -170,13 +171,13 @@ class Graph:
                     ignore_index=True
                 )
         try:
-            proto_db.to_parquet(f"{self.root}/data/papers/chunks.parquet", index=False)
-            state["path_to_chunks"] = f"{self.root}/data/papers/chunks.parquet"
+            proto_db.to_parquet(f"{self.root}/{state['run_id']}/data/chunks.parquet", index=False)
+            state["path_to_chunks"] = f"{self.root}/{state['run_id']}/data/chunks.parquet"
             state["job_status"] = "success"
             self.logs.update('path_to_chunks', state)
             logging.info("Chunking completed.")
         except Exception as e:
-            state["path_to_chunks"] = ""
+            state["path_to_chunks"] = np.nan
             state["job_status"] = "failure"
             logging.error(f"Error saving chunks to parquet: {e}")
         return state
@@ -186,7 +187,7 @@ class Graph:
         swarm = LLMSwarm(
             model_name=state['model_name'],
             user_query=state['user_query'],
-            root_dir=self.root,
+            root_dir=f"{self.root}/{state['run_id']}/data",
             chunk_scoring=state['path_to_relevant_papers']
         )
         try:
@@ -206,7 +207,7 @@ class Graph:
 The user will ask you a question on that topic and you will answer it fully and provide all relevant details."""
         state["job"] = "chunks_to_q/a_pairs"
         train_dataset = []
-        chunks = pd.read_parquet(f'{self.root}/data/papers/chunks.parquet')
+        chunks = pd.read_parquet(state["path_to_chunks"])
         for _, row in chunks.iterrows():
             qa_pairs = self.llm.chunk_to_qa(
                 chunk=row['chunk'],
@@ -225,7 +226,7 @@ The user will ask you a question on that topic and you will answer it fully and 
                     }
                 )
         try:
-            path = f"{self.root}/data/dataset.json"
+            path = f"{self.root}/{state['run_id']}/data/dataset.json"
             train_dataset.to_json(path, orient="records")
             state['path_to_qa_pairs'] = path
             state['job_status'] = "success"
@@ -242,7 +243,7 @@ The user will ask you a question on that topic and you will answer it fully and 
         swarm = LLMSwarm(
             model_name=state['model_name'],
             user_query=state['user_query'],
-            root_dir=self.root,
+            root_dir=f"{self.root}/{state['run_id']}/data",
             chunk_to_qa=state['path_to_chunks']
         )
         try:

@@ -78,9 +78,9 @@ You will return the question and answer pairs in a json format with the followin
         )
         try:
             response = json.loads(resp['message']['content'])
-            with open(f'{self.root}/{state['run_id']}/data/search_queries.json', 'w') as f:
+            path_to_search_queries = f"{self.root}/{state['run_id']}/data/search_queries.json"
+            with open(path_to_search_queries, 'w') as f:
                 json.dump(response, f, indent=4)
-            path_to_search_queries = f"{self.root}/data/search_queries.json"
             action_status = "success"
             logging.info(f"Search queries saved to search_queries.json: {response}")
         except json.JSONDecodeError as e:
