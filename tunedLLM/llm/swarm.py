@@ -1,5 +1,6 @@
 import os
 import glob
+import json
 import logging
 import subprocess
 import pandas as pd
@@ -8,13 +9,22 @@ import concurrent.futures
 
 
 class LLMSwarm:
-    def __init__(self, model_name: str = None, user_query: str = None, root_dir: str = None, chunk_scoring: str = None, chunk_to_qa: str = None):
+    def __init__(
+            self,
+            model_name: str = None,
+            user_query: str = None,
+            root_dir: str = None, 
+            chunk_scoring: str = None,
+            chunk_to_qa: str = None,
+            train_prompt: str = None
+        ):
         self.root = root_dir
         self.chunk_scoring = chunk_scoring
         self.chunk_to_qa = chunk_to_qa
         self.user_query = user_query
         self.model_name = model_name
         self.n_jobs = 4
+        self.train_prompt = train_prompt
         self.ports = ["11434", "11435", "11436", "11437"]
         self.executables = []
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -33,10 +43,7 @@ class LLMSwarm:
                         logging.warning(f"{script} completed with output:\n{data}")
                 except Exception as exc:
                     logging.error(f"{script} generated an exception: {exc}")
-        if self.chunk_scoring:
-            return self.concat_batches(filename="chunks")
-        elif self.chunk_to_qa:
-            return self.concat_batches(filename="qa_pairs")
+        self.concat_batches()
     
     def run_script(self, script):
         result = subprocess.Popen(
@@ -58,33 +65,61 @@ class LLMSwarm:
             return {"error": f"Script {script} failed with return code {returncode}."}
         return {"status": "success"}
 
-    def concat_batches(self, filename: str = None):
-        parquet_files = sorted(glob.glob(f"{self.root}/data/papers/{filename}_*.parquet"))
-        if not parquet_files:
-            logging.warning(f"No {filename} parquet files found to concatenate.")
-            return
+    def concat_batches(self):
+        if self.chunk_scoring:
+            parquet_files = sorted(glob.glob(f"{self.root}/data/papers/chunks_*.parquet"))
+            if not parquet_files:
+                logging.warning(f"No chunks parquet files found to concatenate.")
+                return
 
-        df_list = [pd.read_parquet(f) for f in parquet_files]
-        combined_df = pd.concat(df_list, ignore_index=True)
-        combined_df.reset_index(drop=True, inplace=True)
-        output_path = f"{self.root}/data/papers/{filename}.parquet"
-        combined_df.to_parquet(output_path, index=False)
-        logging.info(f"Combined {filename} saved to {output_path}")
-
-        for f in parquet_files:
+            df_list = [pd.read_parquet(f) for f in parquet_files]
+            combined_df = pd.concat(df_list, ignore_index=True)
+            combined_df.reset_index(drop=True, inplace=True)
+            output_path = f"{self.root}/data/papers/chunks.parquet"
             try:
-                os.remove(f)
+                combined_df.to_parquet(output_path, index=False)
+                logging.info(f"Combined chunks saved to {output_path}")
             except Exception as e:
-                logging.error(f"Failed to delete {f}: {e}")
-        return output_path
+                logging.error(f"Failed to save chunks: {e}")
+                return
+
+            for f in parquet_files:
+                try:
+                    os.remove(f)
+                except Exception as e:
+                    logging.error(f"Failed to delete {f}: {e}")
+            return output_path
+        elif self.chunk_to_qa:
+            json_files = sorted(glob.glob(f"{self.root}/data/dataset_*.json"))
+            if not json_files:
+                logging.warning(f"No training batches found to concatenate")
+                return
+            training_dataset = []
+            for jsnf in json_files:
+                try:
+                    with open(jsnf, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                        training_dataset.extend(data)
+                except Exception as e:
+                    logging.error("Failed to concatenate json files: " + str(e))
+            path = f"{self.root}/data/dataset.json"
+            try:
+                training_dataset.to_json(path, orient="records")
+                logging.info(f"combined training dataset saved to {path}")
+            except Exception as e:
+                logging.error(f"Failed to write json training set: {e}")
+                return
+            for f in json_files:
+                os.remove(f)
+            return path
 
     def parallelize(self):
         if self.chunk_scoring:
-            data_path = self.chunk_scoring
-            logging.info("Batching chunk data for scoring...")
+            data_path = f"{self.chunk_scoring}/metadata.parquet"
+            logging.info("Batching metadata for chunking and scoring...")
         elif self.chunk_to_qa:
             data_path = self.chunk_to_qa
-            logging.info("Batching chunk data for question answering...")
+            logging.info("Batching chunks for q/a pair generation...")
         df = pd.read_parquet(data_path)
         num_rows = len(df)
         rows_per_split = num_rows // self.n_jobs
@@ -126,10 +161,10 @@ if __name__ == "__main__":
     logging.info("worker " + str({i}) + " started")
     worker_dir = f"{self.root}/data/jobs/batch_{i}"
     df = pd.read_parquet(worker_dir + "/data.parquet")
-    result_df = pd.DataFrame()
     llm = LLM(model_name="{self.model_name}", port="{self.ports[i]}")"""
         if self.chunk_scoring:
             self.worker_script += """
+    result_df = pd.DataFrame()
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=20,
@@ -156,6 +191,31 @@ if __name__ == "__main__":
         result_df.to_parquet(f"{self.root}/data/papers/chunks_{i}.parquet", index=False)
         logging.info("Chunking completed.")
     except Exception as e:
-        logging.error(f"Error saving chunks to parquet: " + str(e))"""
+        logging.error("Error saving chunks to parquet: " + str(e))"""
         elif self.chunk_to_qa:
-            self.worker_script += """"""
+            self.worker_script += """
+    train_dataset = []
+    train_system_message = str({self.train_prompt})
+    path = f"{self.root}/data/papers/dataset_{i}.json"
+    for _, row in df.iterrows():
+        qa_pairs = llm.chunk_to_qa(
+            chunk=row['chunk'],
+            user_query=str({self.user_query}),
+            title=row['title'],
+            abstract=row['abstract']
+        )
+        for qa_pair in qa_pairs:
+            train_dataset.append(
+                {
+                    "messages": [
+                        {"role": "system", "content": train_system_message},
+                        {"role": "user", "content": qa_pair["question"]},
+                        {"role": "assistant", "content": qa_pair["answer"]}
+                    ]
+                }
+            )
+        try:
+            train_dataset.to_json(path, orient="records")
+            logging.info("train dataset completed.")
+        execept Exception as e:
+            logging.error("train dataset failed: ", e)"""

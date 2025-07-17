@@ -172,7 +172,7 @@ class Graph:
         self.train_prompt = f"""You are an AI subject-matter expert which should provide expert-level answers on the followin topic:
 {state['topic']}
 The user will ask you a question on that topic and you will answer it fully and provide all relevant details."""
-        state["job"] = "chunks_to_question_answer_pairs"
+        state["job"] = "chunks_to_q/a_pairs"
         train_dataset = []
         chunks = pd.read_parquet(f'{self.root}/data/papers/chunks.parquet')
         for _, row in chunks.iterrows():
@@ -205,6 +205,20 @@ The user will ask you a question on that topic and you will answer it fully and 
         return state
     
     def parallelized_chunks_to_qa(self, state: AgentState) -> AgentState:
+        state["job"] = "parallelized_chunks_to_q/a_pairs"
+        swarm = LLMSwarm(
+            model_name=state['model_name'],
+            user_query=state['user_query'],
+            root_dir=self.root,
+            chunk_to_qa=state['path_to_chunks']
+        )
+        try:
+            state["path_to_chunks"] = swarm.run()
+            state["job_status"] = "success"
+        except Exception as e:
+            state["path_to_chunks"] = ""
+            state["job_status"] = "failure"
+            logging.error(f"Error in parallelized chunking: {e}")
         return state
     
     def chunking_routing(self, state: AgentState) -> str:
