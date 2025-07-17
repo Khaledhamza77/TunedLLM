@@ -5,9 +5,10 @@ import subprocess
 import pandas as pd
 from uuid import uuid4
 from .agent import LLM
-from ..coredb import CoreDB
-from .state import AgentState
+from ..db.logs import Logs
 from .swarm import LLMSwarm
+from .state import AgentState
+from ..db.coredb import CoreDB
 from langgraph.graph import StateGraph, END
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
@@ -15,31 +16,57 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 class Graph:
     def __init__(
             self, 
-            user_query: str, 
+            user_query: str,
+            root_dir: str, 
             model_name: str = "gemma3:1b", 
             port: str = "11434",
             finetune: bool = True,
-            rag: bool = True
+            rag: bool = False
         ):
         self.user_query = user_query
+        self.root = root_dir
         self.model_name = model_name
         self.port = port
         self.finetune = finetune
         self.rag = rag
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-        self.root = os.path.dirname(os.path.abspath(__file__)).replace('\\', '/')
-        os.makedirs(f"{self.root}/data", exist_ok=True)
-        os.makedirs(f"{self.root}/data/papers", exist_ok=True)
-        os.makedirs(f"{self.root}/data/papers/full_texts", exist_ok=True)
+    
+    def onboarding(self, state: AgentState) -> AgentState:
+        self.logs = Logs(self.root)
+        logging.info('Starting Graph ...')
+        return state
+    
+    def stage_routing(self, state: AgentState) -> str:
+        # Check if any previous run has the same user_query
+        df = self.logs.log_file
+        if df is not None and not df.empty:
+            match = df[df['user_query'] == state['user_query']]
+            if not match.empty:
+                self.logs.index = match.index[0]
+                state['run_id'] = match['run_id']
+                for col in match.columns:
+                    if pd.notna(match[col]) and col not in ['user_query', 'run_id']:
+                        state[col] = match[col]
+                        stage = col
+                return stage
+        state['run_id'] = str(uuid4()) 
+        state['user_query'] = state['user_query']
+        self.logs.update('run_id', state)
+        self.logs.update('user_query', state)
+        self.logs.save()
+        os.makedirs(f"{self.root}/{state['run_id']}/data/full_texts")
+        return "onboarding"
 
     def query_to_topic(self, state: AgentState) -> AgentState:
         state['job'] = "infer_topic_of_query"
         state['job_status'], state['topic'] = self.llm.query_to_topic(state['user_query'])
+        self.logs.update('topic', state)
         return state
 
     def query_to_search(self, state: AgentState) -> AgentState:
         state["job"] = "query_to_search"
         state["job_status"], state["path_to_search_queries"] = self.llm.query_to_search(state['user_query'])
+        self.logs.update('path_to_search_queries', state)
         return state
 
     def get_papers(self, state: AgentState) -> AgentState:
@@ -57,6 +84,7 @@ class Graph:
             core.concat_metadata()
             state["path_to_relevant_papers"] = f"{self.root}/data/papers"
             state["job_status"] = "success"
+            self.logs.update('path_to_relevant_papers', state)
             logging.info("Papers and their metadata retrieved successfully.")
         except Exception as e:
             state["path_to_relevant_papers"] = ""
@@ -144,6 +172,7 @@ class Graph:
             proto_db.to_parquet(f"{self.root}/data/papers/chunks.parquet", index=False)
             state["path_to_chunks"] = f"{self.root}/data/papers/chunks.parquet"
             state["job_status"] = "success"
+            self.logs.update('path_to_chunks', state)
             logging.info("Chunking completed.")
         except Exception as e:
             state["path_to_chunks"] = ""
@@ -162,6 +191,8 @@ class Graph:
         try:
             state["path_to_chunks"] = swarm.run()
             state["job_status"] = "success"
+            self.logs.update('path_to_chunks', state)
+            logging.info("Successfully chunked and saved chunks")
         except Exception as e:
             state["path_to_chunks"] = ""
             state["job_status"] = "failure"
@@ -197,6 +228,7 @@ The user will ask you a question on that topic and you will answer it fully and 
             train_dataset.to_json(path, orient="records")
             state['path_to_qa_pairs'] = path
             state['job_status'] = "success"
+            self.logs.update('path_to_qa_pairs', state)
             logging.info(f'Training dataset generated successfully and saved to {path}')
         except Exception as e:
             logging.error(f'Training dataset was not saved: {e}')
@@ -213,10 +245,11 @@ The user will ask you a question on that topic and you will answer it fully and 
             chunk_to_qa=state['path_to_chunks']
         )
         try:
-            state["path_to_chunks"] = swarm.run()
+            state["path_to_qa_pairs"] = swarm.run()
             state["job_status"] = "success"
+            self.logs.update('path_to_qa_pairs', state)
         except Exception as e:
-            state["path_to_chunks"] = ""
+            state["path_to_qa_pairs"] = ""
             state["job_status"] = "failure"
             logging.error(f"Error in parallelized chunking: {e}")
         return state
@@ -236,7 +269,11 @@ The user will ask you a question on that topic and you will answer it fully and 
     def build_graph(self) -> StateGraph:
         workflow = StateGraph(AgentState)
         workflow.add_node(
-            "quer_to_topic",
+            "onboarding",
+            self.onboarding
+        )
+        workflow.add_node(
+            "query_to_topic",
             self.query_to_topic
         )
         workflow.add_node(
@@ -271,7 +308,19 @@ The user will ask you a question on that topic and you will answer it fully and 
             "parallelized_chunks_to_qa",
             self.parallelized_chunks_to_qa,
         )
-        workflow.set_start("query_to_topic")
+        workflow.set_start("onboarding")
+        workflow.add_conditional_edge(
+            "onboarding",
+            self.stage_routing,
+            {
+                "onboarding": "query_to_topic",
+                "topic": "query_to_search",
+                "path_to_search_queries": "get_papers",
+                "path_to_relevant_papers": "check_gpu_infrastructure_1",
+                "path_to_chunks": "check_gpu_infrastructure_2",
+                "path_to_qa_pairs": END
+            }
+        )
         workflow.add_edge("query_to_topic", "query_to_search")
         workflow.add_edge("query_to_search", "get_papers")
         workflow.add_edge("get_papers", "check_gpu_infrastructure_1")
@@ -319,7 +368,6 @@ The user will ask you a question on that topic and you will answer it fully and 
     def run(self):
         state = AgentState()
         state["model_name"] = self.model_name
-        state["run_id"] = str(uuid4())
         state["user_query"] = self.user_query
         state["finetune"] = self.finetune
         state["rag"] = self.rag
