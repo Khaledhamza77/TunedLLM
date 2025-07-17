@@ -308,7 +308,7 @@ The user will ask you a question on that topic and you will answer it fully and 
             "parallelized_chunks_to_qa",
             self.parallelized_chunks_to_qa,
         )
-        workflow.set_start("onboarding")
+        workflow.set_entry_point("onboarding")
         workflow.add_conditional_edge(
             "onboarding",
             self.stage_routing,
