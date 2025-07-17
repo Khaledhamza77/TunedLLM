@@ -67,7 +67,7 @@ You will return the question and answer pairs in a json format with the followin
             {'role': 'system', 'content': self.query_to_search_system_message},
             {'role': 'user', 'content': query}
         ]
-        response = self.client.generate(
+        response = self.client.chat(
             model=self.model_name,
             messages=messages,
             format='json',
@@ -94,7 +94,7 @@ You will return the question and answer pairs in a json format with the followin
             {'role': 'user', 'content': query}
         ]
         try:
-            response = self.client.generate(
+            response = self.client.chat(
                 model=self.model_name,
                 messages=messages,
                 format='json',
@@ -118,7 +118,7 @@ Paper Abstract: {doc['abstract']}"""
             {'role': 'system', 'content': self.score_chunk_system_message},
             {'role': 'user', 'content': user_message_content}
         ]
-        response = self.client.generate(
+        response = self.client.chat(
             model=self.model_name,
             messages=messages,
             format='json',
@@ -143,7 +143,7 @@ Chunk: {chunk}"""
             {'role': 'system', 'content': self.chunk_to_qa_system_message},
             {'role': 'user', 'content': user_message_content}
         ]
-        response = self.client.generate(
+        response = self.client.chat(
             model=self.model_name,
             messages=messages,
             format='json',
