@@ -373,7 +373,7 @@ The user will ask you a question on that topic and you will answer it fully and 
         state["finetune"] = self.finetune
         state["rag"] = self.rag
         try:
-            self.llm = LLM(model_name=self.model_name, port=self.port)
+            self.llm = LLM(root_dir=self.root, model_name=self.model_name, port=self.port)
         except Exception as e:
             logging.error(f"Error initializing llm: {e}")
         graph = self.build_graph()

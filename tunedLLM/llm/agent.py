@@ -3,9 +3,10 @@ import ollama
 import logging
 
 class LLM:
-    def __init__(self, model_name: str = "gemma3:1b", port: str = "11434"):
+    def __init__(self, root_dir: str = None, model_name: str = "gemma3:1b", port: str = "11434"):
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
         self.client = ollama.Client(host=f"http://localhost:{port}")
+        self.root = root_dir
         self.model_name = model_name
         logging.info(f"LLM client initialized with model {self.model_name} on port {port}")
         self.query_to_topic_system_message = """You are an AI agent which helps users find the best topic which best encompasses their query.
@@ -102,6 +103,7 @@ You will return the question and answer pairs in a json format with the followin
                     'temperature': 0.1
                 }
             )
+            print(response)
             topic = response['topic']
             logging.info(f"Successfully generated topic for query: {topic}")
             return "sucess", topic
