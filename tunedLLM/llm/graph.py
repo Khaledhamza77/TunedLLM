@@ -40,14 +40,15 @@ class Graph:
     def stage_routing(self, state: AgentState) -> str:
         # Check if any previous run has the same user_query
         df = self.logs.log_file
+        stage = "onboarding"
         if df is not None and not df.empty:
             match = df[df['user_query'] == state['user_query']]
             if not match.empty:
                 self.logs.index = match.index[0]
                 state['run_id'] = match['run_id'].iloc[0]
-                stage = "onboarding"
+                state['user_query'] = match['user_query'].iloc[0]
                 for col in match.columns:
-                    if pd.notna(match[col].iloc[0]) and col not in ['user_query', 'run_id']:
+                    if pd.notna(match[col].iloc[0]) and col not in ['user_query', 'run_id'] and match[col].iloc[0] != "":
                         state[col] = match[col].iloc[0]
                         stage = col
         if stage == "onboarding":
