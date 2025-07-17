@@ -373,6 +373,7 @@ The user will ask you a question on that topic and you will answer it fully and 
     def run(self):
         state = AgentState()
         state["model_name"] = self.model_name
+        state["user_query"] = self.user_query
         state["finetune"] = self.finetune
         state["rag"] = self.rag
         try:
