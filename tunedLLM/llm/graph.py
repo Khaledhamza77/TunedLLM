@@ -324,7 +324,7 @@ The user will ask you a question on that topic and you will answer it fully and 
         workflow.add_edge("query_to_topic", "query_to_search")
         workflow.add_edge("query_to_search", "get_papers")
         workflow.add_edge("get_papers", "check_gpu_infrastructure_1")
-        workflow.add_condditional_edge(
+        workflow.add_conditional_edges(
             "check_gpu_infrastructure_1",
             self.chunking_routing,
             {
