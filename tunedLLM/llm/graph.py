@@ -57,6 +57,7 @@ class Graph:
             self.logs.update('user_query', state)
             self.logs.save()
             os.makedirs(f"{self.root}/{state['run_id']}/data/full_texts")
+        print(state['run_id'])
         return stage
 
     def query_to_topic(self, state: AgentState) -> AgentState:
