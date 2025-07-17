@@ -68,7 +68,7 @@ You will return the question and answer pairs in a json format with the followin
             {'role': 'system', 'content': self.query_to_search_system_message},
             {'role': 'user', 'content': query}
         ]
-        response = self.client.chat(
+        resp = self.client.chat(
             model=self.model_name,
             messages=messages,
             format='json',
@@ -77,8 +77,9 @@ You will return the question and answer pairs in a json format with the followin
             }
         )
         try:
+            response = json.loads(resp['message']['content'])
             with open(f'{self.root}/data/search_queries.json', 'w') as f:
-                json.dump(response['response'], f, indent=4)
+                json.dump(response, f, indent=4)
             path_to_search_queries = f"{self.root}/data/search_queries.json"
             action_status = "success"
             logging.info("Search queries saved to search_queries.json")
@@ -95,7 +96,7 @@ You will return the question and answer pairs in a json format with the followin
             {'role': 'user', 'content': query}
         ]
         try:
-            response = self.client.chat(
+            resp = self.client.chat(
                 model=self.model_name,
                 messages=messages,
                 format='json',
@@ -103,7 +104,7 @@ You will return the question and answer pairs in a json format with the followin
                     'temperature': 0.1
                 }
             )
-            print(response)
+            response = json.loads(resp['message']['content'])
             topic = response['topic']
             logging.info(f"Successfully generated topic for query: {topic}")
             return "sucess", topic
@@ -120,7 +121,7 @@ Paper Abstract: {doc['abstract']}"""
             {'role': 'system', 'content': self.score_chunk_system_message},
             {'role': 'user', 'content': user_message_content}
         ]
-        response = self.client.chat(
+        resp = self.client.chat(
             model=self.model_name,
             messages=messages,
             format='json',
@@ -129,7 +130,8 @@ Paper Abstract: {doc['abstract']}"""
             }
         )
         try:
-            relevance_class = response['response']['relevance_class']
+            response = json.loads(resp['message']['content'])
+            relevance_class = response['relevance_class']
             logging.info(f"Relevance class determined: {relevance_class}")
             return relevance_class
         except KeyError as e:
@@ -145,7 +147,7 @@ Chunk: {chunk}"""
             {'role': 'system', 'content': self.chunk_to_qa_system_message},
             {'role': 'user', 'content': user_message_content}
         ]
-        response = self.client.chat(
+        resp = self.client.chat(
             model=self.model_name,
             messages=messages,
             format='json',
@@ -154,7 +156,7 @@ Chunk: {chunk}"""
             }
         )
         try:
-            qa_pairs = response['response']
+            qa_pairs = json.loads(resp['message']['content'])
             logging.info(f"QA pairs generated successfully.")
             return qa_pairs
         except KeyError as e:
