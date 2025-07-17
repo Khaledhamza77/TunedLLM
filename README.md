@@ -3,7 +3,8 @@ Agentic AI system for making your LLM tuned with latest research papers relevant
 
 # Setup
 
-Get API key from CORE database. Link: https://core.ac.uk/services/api#what-is-included
+Get API key from CORE database: https://core.ac.uk/services/api#what-is-included
+
 Follow the instructions step by step and then save the api key string in .txt file called apikey.txt in your working directory.
 ```bash
     docker pull ollama/ollama

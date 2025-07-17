@@ -81,8 +81,8 @@ You will return the question and answer pairs in a json format with the followin
         
         return action_status, path_to_search_queries
     
-    def score_chunk(self, user_query, doc):
-        user_message_content = f"""Chunk: {doc['chunk']}
+    def score_chunk(self, user_query, chunk, doc):
+        user_message_content = f"""Chunk: {chunk}
 User Query: {user_query}
 Paper Title: {doc['title']}
 Paper Abstract: {doc['abstract']}"""

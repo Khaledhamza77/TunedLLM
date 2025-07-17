@@ -1,6 +1,7 @@
 from typing import TypedDict, Literal
 
 class AgentState(TypedDict):
+    model_name: str | None
     run_id: str | None
     user_query: str | None
     job: str | None
@@ -8,3 +9,6 @@ class AgentState(TypedDict):
     path_to_search_queries: str | None
     path_to_relevant_papers: str | None
     path_to_chunks: str | None
+    path_to_qa_pairs: str | None
+    parallel_chunking: bool | None
+    parallel_qa: bool | None

@@ -71,7 +71,7 @@ class CoreDB:
         except Exception as e:
             logging.error(f"Error saving metadata to parquet: {e}")
     
-    def cocnat_metadata(self):
+    def concat_metadata(self):
         parquet_files = sorted(glob.glob(f"{self.root}/data/papers/metadata_*.parquet"))
         if not parquet_files:
             logging.warning("No metadata parquet files found to concatenate.")

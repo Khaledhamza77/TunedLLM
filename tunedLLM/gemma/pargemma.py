@@ -1,0 +1,159 @@
+import os
+import glob
+import logging
+import subprocess
+import pandas as pd
+from tqdm import tqdm
+import concurrent.futures
+
+
+class ParallelGemma:
+    def __init__(self, model_name: str = None, user_query: str = None, root_dir: str = None, chunk_scoring: str = None, chunk_to_qa: str = None):
+        self.root = root_dir
+        self.chunk_scoring = chunk_scoring
+        self.chunk_to_qa = chunk_to_qa
+        self.user_query = user_query
+        self.model_name = model_name
+        self.n_jobs = 4
+        self.ports = ["11434", "11435", "11436", "11437"]
+        self.executables = []
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        os.makedirs(f"{self.root}/data/jobs", exist_ok=True)
+
+    def run(self):
+        self.parallelize()
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_jobs) as executor:
+            futures = {executor.submit(self.run_script, script): script for script in self.executables}
+            logging.info('Started representation process ...')
+            for future in concurrent.futures.as_completed(futures):
+                script = futures[future]
+                try:
+                    data = future.result()
+                    if "error" in data:
+                        logging.warning(f"{script} completed with output:\n{data}")
+                except Exception as exc:
+                    logging.error(f"{script} generated an exception: {exc}")
+        if self.chunk_scoring:
+            return self.concat_batches(filename="chunks")
+        elif self.chunk_to_qa:
+            return self.concat_batches(filename="qa_pairs")
+    
+    def run_script(self, script):
+        result = subprocess.Popen(
+            ['python', '-u', script],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1
+        )
+        for line in result.stdout:
+            if 'ERROR' in line:
+                logging.error(line.strip())
+            else:
+                logging.info(line.strip())
+
+        returncode = result.wait()
+        if returncode != 0:
+            logging.error(f"Script {script} failed with return code {returncode}.")
+            return {"error": f"Script {script} failed with return code {returncode}."}
+        return {"status": "success"}
+
+    def concat_batches(self, filename: str = None):
+        parquet_files = sorted(glob.glob(f"{self.root}/data/papers/{filename}_*.parquet"))
+        if not parquet_files:
+            logging.warning(f"No {filename} parquet files found to concatenate.")
+            return
+
+        df_list = [pd.read_parquet(f) for f in parquet_files]
+        combined_df = pd.concat(df_list, ignore_index=True)
+        combined_df.reset_index(drop=True, inplace=True)
+        output_path = f"{self.root}/data/papers/{filename}.parquet"
+        combined_df.to_parquet(output_path, index=False)
+        logging.info(f"Combined {filename} saved to {output_path}")
+
+        for f in parquet_files:
+            try:
+                os.remove(f)
+            except Exception as e:
+                logging.error(f"Failed to delete {f}: {e}")
+        return output_path
+
+    def parallelize(self):
+        if self.chunk_scoring:
+            data_path = self.chunk_scoring
+            logging.info("Batching chunk data for scoring...")
+        elif self.chunk_to_qa:
+            data_path = self.chunk_to_qa
+            logging.info("Batching chunk data for question answering...")
+        df = pd.read_parquet(data_path)
+        num_rows = len(df)
+        rows_per_split = num_rows // self.n_jobs
+        remainder = num_rows % self.n_jobs
+        start_idx = 0
+        self.setup_worker()
+        for i in tqdm(range(self.n_jobs)):
+            os.makedirs(f"{self.root}/data/jobs/batch_{i}", exist_ok=True)
+            end_idx = start_idx + rows_per_split
+            if i == self.n_jobs - 1:
+                end_idx += remainder
+            df2 = df.iloc[start_idx:end_idx]
+            df2.reset_index(inplace=True, drop=True)
+            df2.to_parquet(
+                f'{self.root}/data/jobs/batch_{i}/data.parquet'
+            )
+            start_idx = end_idx
+            self.write_worker(i)
+            del df2
+        del df
+        logging.info('Successfully batched metadata and created workers.')
+    
+    def write_worker(self, i: int):
+        worker_path = f"{self.root}/data/jobs/batch_{i}/worker.py"
+        self.executables.append(worker_path)
+        with open(worker_path, "w") as worker:
+            worker.write(self.worker_script.format(self=self, i=i))
+    
+    def setup_worker(self):
+        self.worker_script = """#Auto-generated worker script
+import logging
+import pandas as pd
+from tunedLLM.gemma.agent import Gemma
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.info("worker " + str({i}) + " started")
+    worker_dir = f"{self.root}/data/jobs/batch_{i}"
+    df = pd.read_parquet(worker_dir + "/data.parquet")
+    result_df = pd.DataFrame()
+    gemma = Gemma(model_name="{self.model_name}", port="{self.ports[i]}")"""
+        if self.chunk_scoring:
+            self.worker_script += """
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500,
+        chunk_overlap=20,
+        length_function=len,
+        is_separator_regex=False,
+    )
+    for _, row in df.iterrows():
+        with open(f"{self.root}/data/papers/full_texts/{row['id']}.txt", 'r', encoding='utf-8') as f:
+            full_text = f.read()
+        chunks = text_splitter.split_text(full_text)
+        for chk_idx, chunk in enumerate(chunks):
+            result_df = result_df.append(
+                {
+                    "chunk_id": f"{row['id']}_" + str(chk_idx),
+                    "id": row["id"],
+                    "chunk": chunk,
+                    "relevance_class": self.gemma.score_chunk('{self.user_query}', chunk, row)
+                },
+                ignore_index=True
+            )
+    try:
+        result_df.to_parquet(f"{self.root}/data/papers/chunks_{i}.parquet", index=False)
+        logging.info("Chunking completed.")
+    except Exception as e:
+        logging.error(f"Error saving chunks to parquet: " + str(e))"""
+        elif self.chunk_to_qa:
+            self.worker_script += """"""

@@ -1,4 +1,5 @@
 import os
+import glob
 import json
 import logging
 import pandas as pd
@@ -6,23 +7,32 @@ from uuid import uuid4
 from .agent import Gemma
 from ..coredb import CoreDB
 from .state import AgentState
+from .pargemma import ParallelGemma
+from langgraph.graph import StateGraph, END
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
 class Graph:
-    def __init__(self, model_name: str = "gemma3:1b", port: str = "11434"):
+    def __init__(self, user_query: str, model_name: str = "gemma3:1b", port: str = "11434"):
+        self.user_query = user_query
+        self.model_name = model_name
+        self.port = port
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
         self.root = os.path.dirname(os.path.abspath(__file__)).replace('\\', '/')
         os.makedirs(f"{self.root}/data", exist_ok=True)
         os.makedirs(f"{self.root}/data/papers", exist_ok=True)
         os.makedirs(f"{self.root}/data/papers/full_texts", exist_ok=True)
-        self.gemma = Gemma(model_name=model_name, port=port)
     
-    def query_to_search(self, state: AgentState, query: str) -> AgentState:
+    def query_to_search(self, state: AgentState) -> AgentState:
+        state["model_name"] = self.model_name
         state["run_id"] = str(uuid4())
-        state["user_query"] = query
+        state["user_query"] = self.user_query
         state["job"] = "query_to_search"
-        state["action_status"], state["path_to_search_queries"] = self.gemma.query_to_search(query)
+        try:
+            self.gemma = Gemma(model_name=self.model_name, port=self.port)
+        except Exception as e:
+            logging.error(f"Error initializing Gemma: {e}")
+        state["action_status"], state["path_to_search_queries"] = self.gemma.query_to_search(self.user_query)
         return state
 
     def get_papers(self, state: AgentState) -> AgentState:
@@ -37,7 +47,7 @@ class Graph:
         try:
             for i, query in enumerate(search_queries_list):
                 core.scroll(query, ceiling=ceilings[i], i=i)
-            core.cocnat_metadata()
+            core.concat_metadata()
             state["path_to_relevant_papers"] = f"{self.root}/data/papers"
             state["job_status"] = "success"
             logging.info("Papers and their metadata retrieved successfully.")
@@ -48,7 +58,7 @@ class Graph:
         return state
     
     def chunk(self, state: AgentState) -> AgentState:
-        state["job"] = "chunk_papers"
+        state["job"] = "chunk_and_score"
         proto_db = pd.DataFrame()
         metadata = pd.read_parquet(f"{state['path_to_relevant_papers']}/metadata.parquet")
         text_splitter = RecursiveCharacterTextSplitter(
@@ -67,15 +77,36 @@ class Graph:
                         "chunk_id": f"{row['id']}_{chk_idx}",
                         "id": row["id"],
                         "chunk": chunk,
-                        "relevance_class": self.gemma.score_chunk(state["user_query"], row)
+                        "relevance_class": self.gemma.score_chunk(state["user_query"], chunk, row)
                     },
                     ignore_index=True
                 )
-        state["job_status"] = "success"
-        logging.info("Chunking completed.")
+        try:
+            proto_db.to_parquet(f"{self.root}/data/papers/chunks.parquet", index=False)
+            state["path_to_chunks"] = f"{self.root}/data/papers/chunks.parquet"
+            state["job_status"] = "success"
+            logging.info("Chunking completed.")
+        except Exception as e:
+            state["path_to_chunks"] = ""
+            state["job_status"] = "failure"
+            logging.error(f"Error saving chunks to parquet: {e}")
         return state
     
     def parallelized_chunk(self, state: AgentState) -> AgentState:
+        state["job"] = "parallelized_chunk_and_score"
+        pargemma = ParallelGemma(
+            model_name=state['model_name'],
+            user_query=state['user_query'],
+            root_dir=self.root,
+            chunk_scoring=state['path_to_relevant_papers']
+        )
+        try:
+            state["path_to_chunks"] = pargemma.run()
+            state["job_status"] = "success"
+        except Exception as e:
+            state["path_to_chunks"] = ""
+            state["job_status"] = "failure"
+            logging.error(f"Error in parallelized chunking: {e}")
         return state
 
     def chunks_to_qa(self, state: AgentState) -> AgentState:
@@ -84,3 +115,73 @@ class Graph:
     
     def parallelized_chunks_to_qa(self, state: AgentState) -> AgentState:
         return state
+    
+    def chunking_routing(self, state: AgentState) -> str:
+        if state['parallel_chunking']:
+            return "parallel"
+        else:
+            return "single"
+
+    def qa_pairs_routing(self, state: AgentState) -> str:
+        if state['parallel_qa']:
+            return "parallel"
+        else:
+            return "single"
+    
+    def build_graph(self) -> StateGraph:
+        workflow = StateGraph(AgentState)
+        workflow.add_node(
+            "query_to_search",
+            self.query_to_search,
+        )
+        workflow.add_node(
+            "get_papers",
+            self.get_papers,
+        )
+        workflow.add_node(
+            "chunk",
+            self.chunk,
+        )
+        workflow.add_node(
+            "parallelized_chunk",
+            self.parallelized_chunk,
+        )
+        workflow.add_node(
+            "chunks_to_qa",
+            self.chunks_to_qa,
+        )
+        workflow.add_node(
+            "parallelized_chunks_to_qa",
+            self.parallelized_chunks_to_qa,
+        )
+
+        workflow.set_start("query_to_search")
+        workflow.add_edge("query_to_search", "get_papers")
+        workflow.add_condditional_edge(
+            "get_papers",
+            self.chunking_routing,
+            {
+                "single": "chunk",
+                "parallel": "parallelized_chunk"
+            }
+        )
+        workflow.add_conditional_edge(
+            "chunk",
+            self.qa_pairs_routing,
+            {
+                "single": "chunks_to_qa",
+                "parallel": "parallelized_chunks_to_qa"
+            }
+        )
+        workflow.add_conditional_edge(
+            "parallelized_chunk",
+            self.qa_pairs_routing,
+            {
+                "single": "chunks_to_qa",
+                "parallel": "parallelized_chunks_to_qa"
+            }
+        )
+        workflow.add_edge("chunks_to_qa", END)
+        workflow.add_edge("parallelized_chunks_to_qa", END)
+        graph = workflow.compile()
+        return graph
