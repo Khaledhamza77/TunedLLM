@@ -46,7 +46,6 @@ class Graph:
             if not match.empty:
                 self.logs.index = match.index[0]
                 state['run_id'] = match['run_id'].iloc[0]
-                state['user_query'] = match['user_query'].iloc[0]
                 for col in match.columns:
                     if pd.notna(match[col].iloc[0]) and col not in ['user_query', 'run_id'] and match[col].iloc[0] != "":
                         state[col] = match[col].iloc[0]
@@ -58,9 +57,7 @@ class Graph:
             self.logs.update('user_query', state)
             self.logs.save()
             os.makedirs(f"{self.root}/{state['run_id']}/data/full_texts")
-            return "onboarding"
-        else:
-            return stage
+        return stage
 
     def query_to_topic(self, state: AgentState) -> AgentState:
         state['job'] = "infer_topic_of_query"
