@@ -39,10 +39,12 @@ class Graph:
         if not matching_rows.empty:
             target_row = matching_rows.iloc[0]
             state['run_id'] = target_row['run_id']
+            state['starting_node'] = 'onboarding'
             for col in df.columns:
-                cell_value = target_row[col]
-                if not pd.isna(cell_value) and cell_value.strip() != "":
-                    state['starting_node'] = col
+                if col not in ['user_query', 'run_id']:
+                    cell_value = target_row[col]
+                    if not pd.isna(cell_value) and cell_value.strip() != "":
+                        state['starting_node'] = col
         else:
             state['run_id'] = str(uuid4()) 
             state['starting_node'] = 'onboarding'
