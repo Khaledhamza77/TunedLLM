@@ -102,8 +102,7 @@ class CoreDB:
             'documentType': hit.get("documentType", ""),
             'yearPublished': hit.get("yearPublished", ""),
             'fullText': ft_path,
-            'downloadUrl': hit.get("downloadUrl", ""),
-            'language': hit.get("language", "")
+            'downloadUrl': hit.get("downloadUrl", "")
         }
         return row
 
