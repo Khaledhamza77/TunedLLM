@@ -16,7 +16,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 class Graph:
     def __init__(
-            self, 
+            self,
             user_query: str,
             root_dir: str, 
             model_name: str = "gemma3:1b", 
@@ -50,14 +50,16 @@ class Graph:
                     if pd.notna(match[col].iloc[0]) and col not in ['user_query', 'run_id']:
                         state[col] = match[col].iloc[0]
                         stage = col
-                return stage
-        state['run_id'] = str(uuid4()) 
-        state['user_query'] = state['user_query']
-        self.logs.update('run_id', state)
-        self.logs.update('user_query', state)
-        self.logs.save()
-        os.makedirs(f"{self.root}/{state['run_id']}/data/full_texts")
-        return "onboarding"
+        if stage == "onboarding":
+            state['run_id'] = str(uuid4()) 
+            state['user_query'] = state['user_query']
+            self.logs.update('run_id', state)
+            self.logs.update('user_query', state)
+            self.logs.save()
+            os.makedirs(f"{self.root}/{state['run_id']}/data/full_texts")
+            return "onboarding"
+        else:
+            return stage
 
     def query_to_topic(self, state: AgentState) -> AgentState:
         state['job'] = "infer_topic_of_query"
@@ -370,7 +372,6 @@ The user will ask you a question on that topic and you will answer it fully and 
     def run(self):
         state = AgentState()
         state["model_name"] = self.model_name
-        state["user_query"] = self.user_query
         state["finetune"] = self.finetune
         state["rag"] = self.rag
         try:
