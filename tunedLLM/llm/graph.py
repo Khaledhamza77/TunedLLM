@@ -44,6 +44,7 @@ class Graph:
             if not match.empty:
                 self.logs.index = match.index[0]
                 state['run_id'] = match['run_id'].iloc[0]
+                stage = "onboarding"
                 for col in match.columns:
                     if pd.notna(match[col].iloc[0]) and col not in ['user_query', 'run_id']:
                         state[col] = match[col].iloc[0]
@@ -359,7 +360,7 @@ The user will ask you a question on that topic and you will answer it fully and 
             logging.error(f"Error compiling graph: {e}")
             raise RuntimeError(f"Graph compilation failed: {e}")
         image_data = graph.get_graph(xray=True).draw_mermaid_png()
-        image_path = f"{self.root}/data/graph_image.png"
+        image_path = f"{self.root}/graph_image.png"
         with open(image_path, "wb") as f:
             f.write(image_data)
         logging.info("Graph image generated successfully.")

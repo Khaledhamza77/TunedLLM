@@ -6,7 +6,7 @@ import pandas as pd
 class Logs:
     def __init__(self, root_dir: str = None):
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-        self.path = f"{root_dir}/tunedLLM/logs.csv"
+        self.path = f"{root_dir}/logs.csv"
         if os.path.exists(self.path):
             self.log_file = pd.read_csv(self.path)
         else:
