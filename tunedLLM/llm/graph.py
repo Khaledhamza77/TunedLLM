@@ -309,7 +309,7 @@ The user will ask you a question on that topic and you will answer it fully and 
             self.parallelized_chunks_to_qa,
         )
         workflow.set_entry_point("onboarding")
-        workflow.add_conditional_edge(
+        workflow.add_conditional_edges(
             "onboarding",
             self.stage_routing,
             {
@@ -334,7 +334,7 @@ The user will ask you a question on that topic and you will answer it fully and 
         )
         workflow.add_edge("chunk", "check_gpu_infrastructure_2")
         workflow.add_edge("parallelized_chunk", "check_gpu_infrastructure_2")
-        workflow.add_conditional_edge(
+        workflow.add_conditional_edges(
             "check_gpu_infrastructure_2",
             self.qa_pairs_routing,
             {
@@ -342,7 +342,7 @@ The user will ask you a question on that topic and you will answer it fully and 
                 "parallel": "parallelized_chunks_to_qa"
             }
         )
-        workflow.add_conditional_edge(
+        workflow.add_conditional_edges(
             "parallelized_chunk",
             self.qa_pairs_routing,
             {
