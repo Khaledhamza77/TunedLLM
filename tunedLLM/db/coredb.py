@@ -100,7 +100,6 @@ class CoreDB:
             'title': hit.get("title", ""),
             'abstract': hit.get("abstract", ""),
             'documentType': hit.get("documentType", ""),
-            'authors': hit.get("authors", []),
             'yearPublished': hit.get("yearPublished", ""),
             'fullText': ft_path,
             'downloadUrl': hit.get("downloadUrl", ""),
