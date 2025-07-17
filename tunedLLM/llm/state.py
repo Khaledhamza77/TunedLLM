@@ -7,6 +7,7 @@ class AgentState(TypedDict):
     topic: str | None
     finetune: bool | None
     rag: bool | None
+    starting_node: str | None
 
     job: str | None
     job_status: Literal['success', 'failure'] | None

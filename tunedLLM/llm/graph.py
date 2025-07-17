@@ -34,31 +34,27 @@ class Graph:
     
     def onboarding(self, state: AgentState) -> AgentState:
         self.logs = Logs(self.root)
-        logging.info('Starting Graph ...')
-        return state
-    
-    def stage_routing(self, state: AgentState) -> str:
-        # Check if any previous run has the same user_query
         df = self.logs.log_file
-        stage = "onboarding"
-        if df is not None and not df.empty:
-            match = df[df['user_query'] == state['user_query']]
-            if not match.empty:
-                self.logs.index = match.index[0]
-                state['run_id'] = match['run_id'].iloc[0]
-                for col in match.columns:
-                    if pd.notna(match[col].iloc[0]) and col not in ['user_query', 'run_id'] and match[col].iloc[0] != "":
-                        state[col] = match[col].iloc[0]
-                        stage = col
-        if stage == "onboarding":
+        matching_rows = df[df['user_query'] == state['user_query']]
+        if not matching_rows.empty:
+            target_row = matching_rows.iloc[0]
+            state['run_id'] = target_row['run_id']
+            for col in df.columns:
+                cell_value = target_row[col]
+                if not pd.isna(cell_value) and cell_value.strip() != "":
+                    state['starting_node'] = col
+        else:
             state['run_id'] = str(uuid4()) 
-            state['user_query'] = state['user_query']
+            state['starting_node'] = 'onboarding'
             self.logs.update('run_id', state)
             self.logs.update('user_query', state)
             self.logs.save()
             os.makedirs(f"{self.root}/{state['run_id']}/data/full_texts")
-        print(state['run_id'])
-        return stage
+        logging.info('Starting Graph ...')
+        return state
+    
+    def stage_routing(self, state: AgentState) -> str:
+        return state['starting_node']
 
     def query_to_topic(self, state: AgentState) -> AgentState:
         state['job'] = "infer_topic_of_query"
