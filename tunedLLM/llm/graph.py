@@ -66,7 +66,7 @@ class Graph:
 
     def query_to_search(self, state: AgentState) -> AgentState:
         state["job"] = "query_to_search"
-        state["job_status"], state["path_to_search_queries"] = self.llm.query_to_search(state['user_query'])
+        state["job_status"], state["path_to_search_queries"] = self.llm.query_to_search(state)
         self.logs.update('path_to_search_queries', state)
         return state
 

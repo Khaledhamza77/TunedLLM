@@ -63,10 +63,10 @@ You will return the question and answer pairs in a json format with the followin
     ...
 }"""
     
-    def query_to_search(self, query: str):
+    def query_to_search(self, state):
         messages = [
             {'role': 'system', 'content': self.query_to_search_system_message},
-            {'role': 'user', 'content': query}
+            {'role': 'user', 'content': state['user_query']}
         ]
         resp = self.client.chat(
             model=self.model_name,
@@ -78,11 +78,11 @@ You will return the question and answer pairs in a json format with the followin
         )
         try:
             response = json.loads(resp['message']['content'])
-            with open(f'{self.root}/data/search_queries.json', 'w') as f:
+            with open(f'{self.root}/{state['run_id']}/data/search_queries.json', 'w') as f:
                 json.dump(response, f, indent=4)
             path_to_search_queries = f"{self.root}/data/search_queries.json"
             action_status = "success"
-            logging.info("Search queries saved to search_queries.json")
+            logging.info(f"Search queries saved to search_queries.json: {response}")
         except json.JSONDecodeError as e:
             path_to_search_queries = ""
             action_status = "failure"
