@@ -43,10 +43,10 @@ class Graph:
             match = df[df['user_query'] == state['user_query']]
             if not match.empty:
                 self.logs.index = match.index[0]
-                state['run_id'] = match['run_id']
+                state['run_id'] = match['run_id'].iloc[0]
                 for col in match.columns:
-                    if pd.notna(match[col]) and col not in ['user_query', 'run_id']:
-                        state[col] = match[col]
+                    if pd.notna(match[col].iloc[0]) and col not in ['user_query', 'run_id']:
+                        state[col] = match[col].iloc[0]
                         stage = col
                 return stage
         state['run_id'] = str(uuid4()) 
