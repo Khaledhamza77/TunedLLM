@@ -5,7 +5,7 @@ import logging
 class LLM:
     def __init__(self, model_name: str = "gemma3:1b", port: str = "11434"):
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-        self.client = ollama.Client(port=f"http://localhost:{port}")
+        self.client = ollama.Client(host=f"http://localhost:{port}")
         self.model_name = model_name
         logging.info(f"LLM client initialized with model {self.model_name} on port {port}")
         self.query_to_topic_system_message = """You are an AI agent which helps users find the best topic which best encompasses their query.
