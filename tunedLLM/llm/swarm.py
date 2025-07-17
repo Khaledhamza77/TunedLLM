@@ -7,7 +7,7 @@ from tqdm import tqdm
 import concurrent.futures
 
 
-class ParallelGemma:
+class LLMSwarm:
     def __init__(self, model_name: str = None, user_query: str = None, root_dir: str = None, chunk_scoring: str = None, chunk_to_qa: str = None):
         self.root = root_dir
         self.chunk_scoring = chunk_scoring
@@ -117,7 +117,7 @@ class ParallelGemma:
         self.worker_script = """#Auto-generated worker script
 import logging
 import pandas as pd
-from tunedLLM.gemma.agent import Gemma
+from tunedLLM.llm.agent import LLM
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
@@ -127,7 +127,7 @@ if __name__ == "__main__":
     worker_dir = f"{self.root}/data/jobs/batch_{i}"
     df = pd.read_parquet(worker_dir + "/data.parquet")
     result_df = pd.DataFrame()
-    gemma = Gemma(model_name="{self.model_name}", port="{self.ports[i]}")"""
+    llm = LLM(model_name="{self.model_name}", port="{self.ports[i]}")"""
         if self.chunk_scoring:
             self.worker_script += """
     text_splitter = RecursiveCharacterTextSplitter(
@@ -146,7 +146,9 @@ if __name__ == "__main__":
                     "chunk_id": f"{row['id']}_" + str(chk_idx),
                     "id": row["id"],
                     "chunk": chunk,
-                    "relevance_class": self.gemma.score_chunk('{self.user_query}', chunk, row)
+                    "relevance_class": self.llm.score_chunk('{self.user_query}', chunk, row),
+                    "title": row['title'],
+                    "abstract": row['abstract']
                 },
                 ignore_index=True
             )

@@ -2,12 +2,19 @@ import json
 import ollama
 import logging
 
-class Gemma:
+class LLM:
     def __init__(self, model_name: str = "gemma3:1b", port: str = "11434"):
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
         self.client = ollama.Client(port=f"http://localhost:{port}")
         self.model_name = model_name
-        logging.info(f"Gemma client initialized with model {self.model_name} on port {port}")
+        logging.info(f"LLM client initialized with model {self.model_name} on port {port}")
+        self.query_to_topic_system_message = """You are an AI agent which helps users find the best topic which best encompasses their query.
+You will be provided with a query and you should tell the user what topic best describes and encompasses their query. The topic should be general and exhaustive.
+You should only output the topic in the following structure:
+{
+    'topic': 'topic you generated'
+}
+You should not generate anything else. The topic should be general enough to contain all information that might be needed to answer user query."""
         self.query_to_search_system_message = """You are an AI agent that helps users transform their queries into 4 search queries which can be used to search the CORE database which is a comprehensive bibliographic database of the world's scholarly literature and it is the world's largest collection of open access research papers
 You will be given a query and you will return 4 search queries that can be used to search the CORE database
 You will return the search queries in a json format with the following structure:
@@ -45,12 +52,12 @@ You should not return any other text or explanation, just the json object with t
 You will return the question and answer pairs in a json format with the following structure:
 {
     {
-        "question 1": "question 1 text",
-        "answer 1": "answer 1 text"
+        "question": "question 1 text",
+        "answer": "answer 1 text"
     },
     {
-        "question 2": "question 2 text",
-        "answer 2": "answer 2 text"
+        "question": "question 2 text",
+        "answer": "answer 2 text"
     },
     ...
 }"""
@@ -81,6 +88,27 @@ You will return the question and answer pairs in a json format with the followin
         
         return action_status, path_to_search_queries
     
+    def query_to_topic(self, query: str):
+        messages = [
+            {'role': 'system', 'content': self.query_to_topic_system_message},
+            {'role': 'user', 'content': query}
+        ]
+        try:
+            response = self.client.generate(
+                model=self.model_name,
+                messages=messages,
+                format='json',
+                options={
+                    'temperature': 0.1
+                }
+            )
+            topic = response['topic']
+            logging.info(f"Successfully generated topic for query: {topic}")
+            return "sucess", topic
+        except Exception as e:
+            logging.error(f'Could not generate topic: {e}')
+            return "failure", ""
+    
     def score_chunk(self, user_query, chunk, doc):
         user_message_content = f"""Chunk: {chunk}
 User Query: {user_query}
@@ -105,6 +133,7 @@ Paper Abstract: {doc['abstract']}"""
         except KeyError as e:
             logging.error(f"Error in response format from Ollama: {e}")
             return ""
+
     def chunk_to_qa(self, chunk: str, user_query: str, title: str, abstract: str):
         user_message_content = f"""User Query: {user_query}
 Paper Title: {title}

@@ -1,5 +1,7 @@
 langchain
 langgraph
+graphviz
+datasets
 ollama==0.5.1
 requests==2.32.4
 pyarrow==20.0.0
