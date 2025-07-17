@@ -41,16 +41,14 @@ class CoreDB:
         while True:
             bool_ = True
             while bool_:
-                try:
-                    result, elapsed = self.query_api(query, is_scroll=True, scrollId=scrollId)
+                result, elapsed = self.query_api(query, is_scroll=True, scrollId=scrollId)
+                if result == 500:
+                    time.sleep(2)
+                elif result == 429:
+                    logging.info('Retrying in 60 seconds...')
+                    time.sleep(60)
+                else:
                     bool_ = False
-                except Exception as e:
-                    logging.error(f'Response retrieval failed: {e}')
-                    if result == 500:
-                        time.sleep(2)
-                    else:
-                        logging.info('Retrying in 60 seconds...')
-                        time.sleep(60)
             scrollId = result["scrollId"]
             totalhits = result["totalHits"]
             result_size = len(result["results"])
@@ -65,14 +63,14 @@ class CoreDB:
                 break
         
         try:
-            output_path = f"{self.root}/data/papers/metadata_{i}.parquet"
+            output_path = f"{self.root}/data/metadata_{i}.parquet"
             pd.DataFrame(allresults).to_parquet(output_path, index=False)
             logging.info(f"Metadata saved to {output_path}")
         except Exception as e:
             logging.error(f"Error saving metadata to parquet: {e}")
     
     def concat_metadata(self):
-        parquet_files = sorted(glob.glob(f"{self.root}/data/papers/metadata_*.parquet"))
+        parquet_files = sorted(glob.glob(f"{self.root}/data/metadata_*.parquet"))
         if not parquet_files:
             logging.warning("No metadata parquet files found to concatenate.")
             return
@@ -81,7 +79,7 @@ class CoreDB:
         combined_df = pd.concat(df_list, ignore_index=True)
         combined_df.drop_duplicates(subset=['title'], inplace=True)
         combined_df.reset_index(drop=True, inplace=True)
-        output_path = f"{self.root}/data/papers/metadata.parquet"
+        output_path = f"{self.root}/data/metadata.parquet"
         combined_df.to_parquet(output_path, index=False)
         logging.info(f"Combined metadata saved to {output_path}")
 
@@ -94,7 +92,7 @@ class CoreDB:
 
     def hit_to_doc(self, hit):
         full_text = hit.get("fullText", "")
-        ft_path = f"{self.root}/data/papers/full_texts/{hit['id']}.txt"
+        ft_path = f"{self.root}/data/full_texts/{hit['id']}.txt"
         with open(ft_path, 'w', encoding='utf-8') as f:
             f.write(full_text)
         row = {

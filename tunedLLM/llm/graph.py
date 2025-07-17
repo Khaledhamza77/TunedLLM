@@ -66,13 +66,12 @@ class Graph:
 
     def query_to_search(self, state: AgentState) -> AgentState:
         state["job"] = "query_to_search"
-        print(state['run_id'])
         state["job_status"], state["path_to_search_queries"] = self.llm.query_to_search(state)
         self.logs.update('path_to_search_queries', state)
         return state
 
     def get_papers(self, state: AgentState) -> AgentState:
-        core = CoreDB(self.root)
+        core = CoreDB(f"{self.root}/{state['run_id']}")
         ceilings = [500, 300, 200, 100]
         state["job"] = "get_papers_and_their_metadata"
         with open(state["path_to_search_queries"], 'r', encoding='utf-8') as f:
@@ -143,6 +142,7 @@ class Graph:
                 state["job"] = "gpu_count"
                 state["job_status"] = "success"
                 state["parallel_qa"] = False
+        return state
     
     def chunk(self, state: AgentState) -> AgentState:
         state["job"] = "chunk_and_score"
