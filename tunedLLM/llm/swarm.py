@@ -217,17 +217,21 @@ if __name__ == "__main__":
             qa_pairs = [qa_pairs]
         if idx % 5 == 0 and idx != 0:
             print('Worker '+str({i})+' Progress update: '+str(idx)+'/'+str(total))
-        if len(qa_pairs) != 0:
-            for qa_pair in qa_pairs:
-                train_dataset.append(
-                    dict(
-                        messages = [
-                            dict(role = "system", content = train_system_message),
-                            dict(role = "user", content = qa_pair["question"]),
-                            dict(role = "assistant", content = qa_pair["answer"])
-                        ]
+        try:
+            if len(qa_pairs) != 0:
+                for qa_pair in qa_pairs:
+                    train_dataset.append(
+                        dict(
+                            messages = [
+                                dict(role = "system", content = train_system_message),
+                                dict(role = "user", content = qa_pair["question"]),
+                                dict(role = "assistant", content = qa_pair["answer"])
+                            ]
+                        )
                     )
-                )
+        except Exception as e:
+            train_dataset.append(dict())
+            logging.error('Lost 1 chunk because of LLM output')
     try:
         train_dataset.to_json(path, orient="records")
         logging.info("train dataset completed.")
