@@ -54,7 +54,7 @@ You should not ask general questions like 'what the paper is about?' or any simi
 Your questions should be directly discussing the topic and not general or related to authors or general information regarding chunk/paper.
 You will return the question and answer pairs in a json format with the following structure:
 {
-    "qa_pairs": {
+    "output": {
         {
             "question": "question 1 text",
             "answer": "answer 1 text"
@@ -162,7 +162,7 @@ Chunk: {chunk}"""
         )
         try:
             qa_pairs = json.loads(resp['message']['content'])
-            return qa_pairs['qa_pairs']
+            return qa_pairs['output']
         except KeyError as e:
             logging.error(f"Error in response format from Ollama: {e}")
             return {}
