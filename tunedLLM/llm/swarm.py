@@ -187,8 +187,7 @@ if __name__ == "__main__":
                     relevance_class = llm.score_chunk('{self.user_query}', chunk, row),
                     title = row['title'],
                     abstract = row['abstract']
-                ),
-                ignore_index=True
+                )
             )
     try:
         result_df = pd.DataFrame(result); del result
