@@ -33,7 +33,7 @@ class LLMSwarm:
         self.parallelize()
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_jobs) as executor:
             futures = {executor.submit(self.run_script, script): script for script in self.executables}
-            logging.info('Started representation process ...')
+            logging.info('Started chunking process ...')
             for future in concurrent.futures.as_completed(futures):
                 script = futures[future]
                 try:

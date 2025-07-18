@@ -48,7 +48,7 @@ You will return the relevance class in a json format with the following structur
         self.chunk_to_qa_system_message = """You are an AI agent which transforms a chunk of text into question and answer pairs. You will be given a chunk of text and you will return a set of question and answer pairs that can be used to fine tune a language model.
 For every relevant piece of informaion in the chunk, you will create a question and an answer. The question should be a clear and concise question that can be answered by the chunk. The answer should be a clear and concise answer that is directly related to the question.
 You will also receive a user query, a paper title and a paper abstract. You will use these to create the question and answer pairs such that they are relevant to the user query, title, and cover all information in the chunk.
-You should return 1 or more pairs based on the amount of relevant information in the chunk.
+You should return 1 or more pairs based on the amount of relevant information in the chunk. If there is no information to be found in the chunk you can return 0 pairs.
 You should not return any other text or explanation, just the json object with the question and answer pairs.
 You will return the question and answer pairs in a json format with the following structure:
 {

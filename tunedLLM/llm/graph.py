@@ -153,7 +153,7 @@ class Graph:
                 state["job"] = "gpu_count"
                 state["job_status"] = "success"
                 state["parallel_chunking"] = True
-            elif state['job'] == "chunk_and_score" or state['job'] == "chunks_to_question_answer_pairs":
+            elif state['job'] == "chunk_and_score" or state['job'] == "parallelized_chunk_and_score":
                 state["job"] = "gpu_count"
                 state["job_status"] = "success"
                 state["parallel_qa"] = True
@@ -162,7 +162,7 @@ class Graph:
                 state["job"] = "gpu_count"
                 state["job_status"] = "success"
                 state["parallel_chunking"] = False
-            elif state['job'] == "chunk_and_score" or state['job'] == "chunks_to_question_answer_pairs":
+            elif state['job'] == "chunk_and_score" or state['job'] == "parallelized_chunk_and_score":
                 state["job"] = "gpu_count"
                 state["job_status"] = "success"
                 state["parallel_qa"] = False
