@@ -217,6 +217,8 @@ if __name__ == "__main__":
             print('Worker '+str({i})+' Progress update: '+str(idx)+'/'+str(total))
         if len(qa_pairs) != 0:
             for qa_pair in qa_pairs:
+                if len(qa_pair) == 2:
+                    qa_pair = [qa_pair]
                 train_dataset.append(
                     dict(
                         messages = [
