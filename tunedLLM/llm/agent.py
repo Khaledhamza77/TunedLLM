@@ -55,11 +55,13 @@ Your questions should be directly discussing the topic and not general or relate
 You will return the question and answer pairs in a json format strictly with the following structure:
 In case of 0 pairs:
 {
+    "pairs": {
+    }
 }
 
 In case of 1 pair:
 {
-    "output": {
+    "pairs": {
         {
             "question": "question 1 text",
             "answer": "answer 1 text"
@@ -67,17 +69,18 @@ In case of 1 pair:
     }
 }
 
-In case of 2 or more pairs:
+In case of 2 pairs or more:
 {
-    "output": {
+    "pairs": {
         {
             "question": "question 1 text",
             "answer": "answer 1 text"
         },
         {
-            "question": "question 1 text",
-            "answer": "answer 1 text"
-        }
+            "question": "question 2 text",
+            "answer": "answer 2 text"
+        },
+        ...
     }
 }"""    
     def query_to_search(self, state):
@@ -176,7 +179,7 @@ Chunk: {chunk}"""
         )
         try:
             qa_pairs = json.loads(resp['message']['content'])
-            return qa_pairs['output']
+            return qa_pairs['pairs']
         except KeyError as e:
             logging.error(f"Error in response format from Ollama: {e}")
             return {}
