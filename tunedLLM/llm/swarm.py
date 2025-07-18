@@ -155,6 +155,7 @@ class LLMSwarm:
         self.worker_script = """#Auto-generated worker script
 import logging
 import pandas as pd
+from tqdm import tqdm
 from tunedLLM.llm.agent import LLM
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
@@ -175,7 +176,7 @@ if __name__ == "__main__":
         length_function=len,
         is_separator_regex=False,
     )
-    for _, row in df.iterrows():
+    for _, row in tqdm(df.iterrows(), desc=f"worker {i}"):
         with open(f"{self.root}/full_texts/"+str(row['id'])+".txt", 'r', encoding='utf-8') as f:
             full_text = f.read()
         chunks = text_splitter.split_text(full_text)
