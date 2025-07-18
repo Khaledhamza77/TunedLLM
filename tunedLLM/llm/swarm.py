@@ -181,7 +181,7 @@ if __name__ == "__main__":
             full_text = f.read()
         chunks = text_splitter.split_text(full_text)
         if idx % 5 == 0:
-            print('Worker '+{i}+' Progress update: '+idx+'/'+total)
+            print('Worker '+str({i})+' Progress update: '+str(idx)+'/'+str(total))
         for chk_idx, chunk in enumerate(chunks):
             result.append(
                 dict(
