@@ -55,11 +55,11 @@ Your questions should be directly discussing the topic and not general or relate
 You will return the question and answer pairs in a json format with the following structure:
 {
     'qa_pairs': {
-        '0': {
+        {
             "question": "question 1 text",
             "answer": "answer 1 text"
         },
-        '1': {
+        {
             "question": "question 2 text",
             "answer": "answer 2 text"
         },
