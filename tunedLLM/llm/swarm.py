@@ -171,7 +171,7 @@ if __name__ == "__main__":
             self.worker_script += """
     result = []
     text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
+        chunk_size=1500,
         chunk_overlap=20,
         length_function=len,
         is_separator_regex=False,

@@ -173,7 +173,7 @@ class Graph:
         proto_db = pd.DataFrame()
         metadata = pd.read_parquet(state['path_to_relevant_papers'])
         text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
+            chunk_size=1500,
             chunk_overlap=20,
             length_function=len,
             is_separator_regex=False,
