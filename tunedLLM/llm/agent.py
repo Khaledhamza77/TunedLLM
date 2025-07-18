@@ -161,7 +161,6 @@ Chunk: {chunk}"""
             }
         )
         try:
-            resp['message']['content'] = resp['message']['content'].replace("'", '"')
             qa_pairs = json.loads(resp['message']['content'])
             return qa_pairs['qa_pairs']
         except KeyError as e:
