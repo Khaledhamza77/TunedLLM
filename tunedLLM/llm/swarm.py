@@ -57,6 +57,8 @@ class LLMSwarm:
                 continue 
             elif 'ERROR' in line:
                 logging.error(line.strip())
+            elif 'Progress update:' in line:
+                logging.info(line.strip())
 
         returncode = result.wait()
         if returncode != 0:
@@ -160,11 +162,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
 if __name__ == "__main__":
-    logging.getLogger('ollama').setLevel(logging.WARNING)
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.basicConfig(level=logging.WARNING, format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info("worker " + str({i}) + " started")
     worker_dir = f"{self.root}/jobs/batch_{i}"
-    df = pd.read_parquet(worker_dir + "/data.parquet")
+    df = pd.read_parquet(worker_dir + "/data.parquet"); total = len(df)
     llm = LLM(root_dir=None, model_name="{self.model_name}", port={port})"""
         if self.chunk_scoring:
             self.worker_script += """
@@ -175,10 +176,12 @@ if __name__ == "__main__":
         length_function=len,
         is_separator_regex=False,
     )
-    for _, row in df.iterrows():
+    for idx, row in df.iterrows():
         with open(f"{self.root}/full_texts/"+str(row['id'])+".txt", 'r', encoding='utf-8') as f:
             full_text = f.read()
         chunks = text_splitter.split_text(full_text)
+        if idx % 10:
+            print('Worker '+{i}+' Progress update: '+idx+'/'+total)
         for chk_idx, chunk in enumerate(chunks):
             result.append(
                 dict(
