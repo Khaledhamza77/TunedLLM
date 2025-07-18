@@ -23,9 +23,9 @@ class LLMSwarm:
         self.chunk_to_qa = chunk_to_qa
         self.user_query = user_query
         self.model_name = model_name
-        self.n_jobs = 4
+        self.n_jobs = 40
         self.train_prompt = train_prompt
-        self.ports = ["11434", "11435", "11436", "11437"]
+        self.ports = list(range(11434, 11474))
         self.executables = []
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
