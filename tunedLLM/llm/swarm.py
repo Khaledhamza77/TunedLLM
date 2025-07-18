@@ -213,12 +213,12 @@ if __name__ == "__main__":
             title=row['title'],
             abstract=row['abstract']
         )
+        if len(qa_pairs) == 2 and isinstance(qa_pairs, dict):
+            qa_pairs = [qa_pairs]
         if idx % 5 == 0 and idx != 0:
             print('Worker '+str({i})+' Progress update: '+str(idx)+'/'+str(total))
         if len(qa_pairs) != 0:
             for qa_pair in qa_pairs:
-                if len(qa_pair) == 2:
-                    qa_pair = [qa_pair]
                 train_dataset.append(
                     dict(
                         messages = [
