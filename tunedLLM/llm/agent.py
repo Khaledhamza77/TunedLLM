@@ -106,7 +106,6 @@ You will return the question and answer pairs in a json format with the followin
             )
             response = json.loads(resp['message']['content'])
             topic = response['topic']
-            logging.info(f"Successfully generated topic for query: {topic}")
             return "sucess", topic
         except Exception as e:
             logging.error(f'Could not generate topic: {e}')

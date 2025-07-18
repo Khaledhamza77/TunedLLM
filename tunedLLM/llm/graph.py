@@ -30,6 +30,7 @@ class Graph:
         self.port = port
         self.finetune = finetune
         self.rag = rag
+        logging.getLogger('ollama').setLevel(logging.WARNING)
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
     def get_state_job(self, stage: str = None):

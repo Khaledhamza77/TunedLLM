@@ -160,6 +160,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
 if __name__ == "__main__":
+    logging.getLogger('ollama').setLevel(logging.WARNING)
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logging.info("worker " + str({i}) + " started")
     worker_dir = f"{self.root}/jobs/batch_{i}"
