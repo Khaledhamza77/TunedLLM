@@ -175,19 +175,19 @@ if __name__ == "__main__":
         is_separator_regex=False,
     )
     for _, row in df.iterrows():
-        with open(f"{self.root}/full_texts/{row['id']}.txt", 'r', encoding='utf-8') as f:
+        with open(f"{self.root}/full_texts/"+row['id']+".txt", 'r', encoding='utf-8') as f:
             full_text = f.read()
         chunks = text_splitter.split_text(full_text)
         for chk_idx, chunk in enumerate(chunks):
             result_df = result_df.append(
-                {
-                    "chunk_id": f"{row['id']}_" + str(chk_idx),
+                dict(
+                    "chunk_id": row['id'] + "_" + str(chk_idx),
                     "id": row["id"],
                     "chunk": chunk,
                     "relevance_class": self.llm.score_chunk('{self.user_query}', chunk, row),
                     "title": row['title'],
                     "abstract": row['abstract']
-                },
+                ),
                 ignore_index=True
             )
     try:
@@ -209,13 +209,13 @@ if __name__ == "__main__":
         )
         for qa_pair in qa_pairs:
             train_dataset.append(
-                {
+                dict(
                     "messages": [
-                        {"role": "system", "content": train_system_message},
-                        {"role": "user", "content": qa_pair["question"]},
-                        {"role": "assistant", "content": qa_pair["answer"]}
+                        dict("role": "system", "content": train_system_message),
+                        dict("role": "user", "content": qa_pair["question"]),
+                        dict("role": "assistant", "content": qa_pair["answer"])
                     ]
-                }
+                )
             )
         try:
             train_dataset.to_json(path, orient="records")
