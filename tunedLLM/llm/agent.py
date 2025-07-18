@@ -50,19 +50,22 @@ For every relevant piece of informaion in the chunk, you will create a question 
 You will also receive a user query, a paper title and a paper abstract. You will use these to create the question and answer pairs such that they are relevant to the user query, title, and cover all information in the chunk.
 You should return 1 or more pairs based on the amount of relevant information in the chunk. If there is no information to be found in the chunk you can return 0 pairs.
 You should not return any other text or explanation, just the json object with the question and answer pairs.
+You should not ask general questions like 'what the paper is about?' or any similar question.
+Your questions should be directly discussing the topic and not general or related to authors or general information regarding chunk/paper.
 You will return the question and answer pairs in a json format with the following structure:
 {
-    {
-        "question": "question 1 text",
-        "answer": "answer 1 text"
-    },
-    {
-        "question": "question 2 text",
-        "answer": "answer 2 text"
-    },
-    ...
-}"""
-    
+    'qa_pairs': {
+        '0': {
+            "question": "question 1 text",
+            "answer": "answer 1 text"
+        },
+        '1': {
+            "question": "question 2 text",
+            "answer": "answer 2 text"
+        },
+        ...
+    }
+}"""    
     def query_to_search(self, state):
         messages = [
             {'role': 'system', 'content': self.query_to_search_system_message},
@@ -159,8 +162,7 @@ Chunk: {chunk}"""
         )
         try:
             qa_pairs = json.loads(resp['message']['content'])
-            print(qa_pairs)
-            return qa_pairs
+            return qa_pairs['qa_pairs']
         except KeyError as e:
             logging.error(f"Error in response format from Ollama: {e}")
             return {}
