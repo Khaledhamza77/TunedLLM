@@ -121,21 +121,24 @@ Paper Abstract: {doc['abstract']}"""
             {'role': 'system', 'content': self.score_chunk_system_message},
             {'role': 'user', 'content': user_message_content}
         ]
-        resp = self.client.chat(
-            model=self.model_name,
-            messages=messages,
-            format='json',
-            options={
-                'temperature': 0.1
-            }
-        )
-        try:
-            response = json.loads(resp['message']['content'])
-            relevance_class = response['relevance_class']
-            return relevance_class
-        except KeyError as e:
-            logging.error(f"Error in response format from Ollama: {e}")
-            return ""
+        max_retries = 5
+        for attempt in range(max_retries):
+            resp = self.client.chat(
+                model=self.model_name,
+                messages=messages,
+                format='json',
+                options={
+                    'temperature': 0.1
+                }
+            )
+            try:
+                response = json.loads(resp['message']['content'])
+                relevance_class = response['relevance_class']
+                return relevance_class
+            except (KeyError, json.JSONDecodeError) as e:
+                logging.warning(f"Attempt {attempt+1}/{max_retries}: Error in response format from Ollama: {e}")
+        logging.error("Failed to get valid relevance_class after multiple attempts.")
+        return ""
 
     def chunk_to_qa(self, chunk: str, user_query: str, title: str, abstract: str):
         user_message_content = f"""User Query: {user_query}

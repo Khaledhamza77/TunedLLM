@@ -57,6 +57,8 @@ class LLMSwarm:
                 continue 
             elif 'ERROR' in line:
                 logging.error(line.strip())
+            else:
+                logging.info(line.strip())
 
         returncode = result.wait()
         if returncode != 0:
