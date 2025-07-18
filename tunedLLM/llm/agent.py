@@ -52,7 +52,22 @@ You should return 1 or more pairs based on the amount of relevant information in
 You should not return any other text or explanation, just the json object with the question and answer pairs.
 You should not ask general questions like 'what the paper is about?' or any similar question.
 Your questions should be directly discussing the topic and not general or related to authors or general information regarding chunk/paper.
-You will return the question and answer pairs in a json format with the following structure:
+You will return the question and answer pairs in a json format strictly with the following structure:
+In case of 0 pairs:
+{
+}
+
+In case of 1 pair:
+{
+    "output": {
+        {
+            "question": "question 1 text",
+            "answer": "answer 1 text"
+        }
+    }
+}
+
+In case of 2 or more pairs:
 {
     "output": {
         {
@@ -60,10 +75,9 @@ You will return the question and answer pairs in a json format with the followin
             "answer": "answer 1 text"
         },
         {
-            "question": "question 2 text",
-            "answer": "answer 2 text"
-        },
-        ...
+            "question": "question 1 text",
+            "answer": "answer 1 text"
+        }
     }
 }"""    
     def query_to_search(self, state):
