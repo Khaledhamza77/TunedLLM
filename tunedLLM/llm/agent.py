@@ -180,6 +180,6 @@ Chunk: {chunk}"""
         try:
             qa_pairs = json.loads(resp['message']['content'])
             return qa_pairs['pairs']
-        except KeyError as e:
+        except Exception as e:
             logging.error(f"Error in response format from Ollama: {e}")
             return {}
