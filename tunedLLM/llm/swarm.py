@@ -236,4 +236,4 @@ if __name__ == "__main__":
         train_dataset.to_json(path, orient="records")
         logging.info("train dataset completed.")
     except Exception as e:
-        logging.error("train dataset failed: ", e)"""
+        logging.error("train dataset failed: " + str(e))"""
