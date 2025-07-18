@@ -88,6 +88,7 @@ class Graph:
             state["path_to_relevant_papers"] = f"{self.root}/{state['run_id']}/data/metadata.parquet"
             state["job_status"] = "success"
             self.logs.update('path_to_relevant_papers', state)
+            self.logs.save()
             logging.info("Papers and their metadata retrieved successfully.")
         except Exception as e:
             state["path_to_relevant_papers"] = np.nan

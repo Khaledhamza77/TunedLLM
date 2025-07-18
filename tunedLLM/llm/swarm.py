@@ -136,7 +136,11 @@ class LLMSwarm:
                 f'{self.root}/jobs/batch_{i}/data.parquet'
             )
             start_idx = end_idx
-            self.write_worker(i)
+            try:
+                self.write_worker(i)
+                logging.info(f"worker {i} created successfully.")
+            except Exception as e:
+                logging.error(f"worker {i} was not created: {e}")
             del df2
         del df
         logging.info('Successfully batched metadata and created workers.')
@@ -145,7 +149,7 @@ class LLMSwarm:
         worker_path = f"{self.root}/jobs/batch_{i}/worker.py"
         self.executables.append(worker_path)
         with open(worker_path, "w") as worker:
-            worker.write(self.worker_script.format(self=self, i=i))
+            worker.write(self.worker_script.format(self=self, i=i, port=self.ports[i]))
     
     def setup_worker(self):
         self.worker_script = """#Auto-generated worker script
@@ -157,12 +161,10 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    ports = {self.ports}
-    port = ports[{i}]
     logging.info("worker " + str({i}) + " started")
     worker_dir = f"{self.root}/jobs/batch_{i}"
     df = pd.read_parquet(worker_dir + "/data.parquet")
-    llm = LLM(root_dir=None, model_name="{self.model_name}", port=port)"""
+    llm = LLM(root_dir=None, model_name="{self.model_name}", port={port})"""
         if self.chunk_scoring:
             self.worker_script += """
     result_df = pd.DataFrame()
