@@ -181,12 +181,12 @@ if __name__ == "__main__":
         for chk_idx, chunk in enumerate(chunks):
             result_df = result_df.append(
                 dict(
-                    "chunk_id": row['id'] + "_" + str(chk_idx),
-                    "id": row["id"],
-                    "chunk": chunk,
-                    "relevance_class": self.llm.score_chunk('{self.user_query}', chunk, row),
-                    "title": row['title'],
-                    "abstract": row['abstract']
+                    "chunk_id" = row['id'] + "_" + str(chk_idx),
+                    "id" = row["id"],
+                    "chunk" = chunk,
+                    "relevance_class" = self.llm.score_chunk('{self.user_query}', chunk, row),
+                    "title" = row['title'],
+                    "abstract" = row['abstract']
                 ),
                 ignore_index=True
             )
@@ -210,10 +210,10 @@ if __name__ == "__main__":
         for qa_pair in qa_pairs:
             train_dataset.append(
                 dict(
-                    "messages": [
-                        dict("role": "system", "content": train_system_message),
-                        dict("role": "user", "content": qa_pair["question"]),
-                        dict("role": "assistant", "content": qa_pair["answer"])
+                    "messages" = [
+                        dict("role" = "system", "content" = train_system_message),
+                        dict("role" = "user", "content" = qa_pair["question"]),
+                        dict("role" = "assistant", "content" = qa_pair["answer"])
                     ]
                 )
             )
