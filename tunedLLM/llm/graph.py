@@ -17,6 +17,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 class Graph:
     def __init__(
             self,
+            total_docs: int,
             user_query: str,
             root_dir: str, 
             model_name: str = "gemma3:1b", 
@@ -30,6 +31,7 @@ class Graph:
         self.port = port
         self.finetune = finetune
         self.rag = rag
+        self.total_docs = total_docs
         logging.getLogger('ollama').setLevel(logging.WARNING)
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
@@ -89,7 +91,11 @@ class Graph:
 
     def get_papers(self, state: AgentState) -> AgentState:
         core = CoreDB(f"{self.root}/{state['run_id']}")
-        ceilings = [500, 300, 200, 100]
+        ceilings = [
+            int(self.total_docs/2),
+            int(self.total_docs/4),
+            int(self.total_docs/8),
+            int(self.total_docs/16)]
         state["job"] = "get_papers_and_their_metadata"
         with open(state["path_to_search_queries"], 'r', encoding='utf-8') as f:
             data = json.load(f)
