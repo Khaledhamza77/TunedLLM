@@ -232,6 +232,7 @@ The user will ask you a question on that topic and you will answer it fully and 
         state["job"] = "chunks_to_q/a_pairs"
         train_dataset = []
         chunks = pd.read_parquet(state["path_to_chunks"])
+        chunks = chunks[chunks["relevance_class"] == "a"]
         for _, row in chunks.iterrows():
             qa_pairs = self.llm.chunk_to_qa(
                 chunk=row['chunk'],
@@ -271,7 +272,7 @@ The user will ask you a question on that topic and you will answer it fully and 
             chunk_to_qa=state['path_to_chunks']
         )
         try:
-            state["path_to_qa_pairs"] = swarm.run()
+            state["path_to_qa_pairs"] = swarm.run(qa=True)
             state["job_status"] = "success"
             self.logs.update('path_to_qa_pairs', state)
         except Exception as e:

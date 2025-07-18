@@ -29,8 +29,8 @@ class LLMSwarm:
         self.executables = []
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    def run(self):
-        self.parallelize()
+    def run(self, qa=False):
+        self.parallelize(qa=qa)
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_jobs) as executor:
             futures = {executor.submit(self.run_script, script): script for script in self.executables}
             logging.info('Started chunking process ...')
@@ -114,7 +114,7 @@ class LLMSwarm:
                 os.remove(f)
             return path
 
-    def parallelize(self):
+    def parallelize(self, qa=False):
         if self.chunk_scoring:
             data_path = self.chunk_scoring
             logging.info("Batching metadata for chunking and scoring...")
@@ -122,6 +122,8 @@ class LLMSwarm:
             data_path = self.chunk_to_qa
             logging.info("Batching chunks for q/a pair generation...")
         df = pd.read_parquet(data_path)
+        if qa:
+            df = df[df['relevance_class'] == 'a']
         num_rows = len(df)
         rows_per_split = num_rows // self.n_jobs
         remainder = num_rows % self.n_jobs
