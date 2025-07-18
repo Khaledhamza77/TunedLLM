@@ -228,9 +228,7 @@ class Graph:
         return state
 
     def chunks_to_qa(self, state: AgentState) -> AgentState:
-        train_prompt = f"""You are an AI subject-matter expert which should provide expert-level answers on the followin topic:
-{state['topic']}
-The user will ask you a question on that topic and you will answer it fully and provide all relevant details."""
+        train_prompt = f"""You are an AI subject-matter expert which should provide expert-level answers on the followin topic:\n{state['topic']}\nThe user will ask you a question on that topic and you will answer it fully and provide all relevant details."""
         state["job"] = "chunks_to_q/a_pairs"
         train_dataset = []
         chunks = pd.read_parquet(state["path_to_chunks"])
