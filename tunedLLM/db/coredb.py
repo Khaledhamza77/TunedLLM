@@ -15,7 +15,8 @@ class CoreDB:
         self.get_api_key()
     
     def get_api_key(self):
-        with open(f"{self.root}/apikey.txt", "r") as file:
+        root = self.root.split('/tunedLLM')[0]
+        with open(f"{root}/apikey.txt", "r") as file:
             self.api_key = file.readlines()[0].strip()
     
     def query_api(self, query, is_scroll = True, limit = 100, scrollId = None):
@@ -32,7 +33,7 @@ class CoreDB:
         if response.status_code == 200:
             return response.json(), response.elapsed.total_seconds()
         else:
-            logging.error(f"Error code {response.status_code}, {response.content}")
+            logging.error(f"Error code {response.status_code}")
             return response.status_code, response.content
     
     def scroll(self, query: str, ceiling: int = 1000, i: int = 0):

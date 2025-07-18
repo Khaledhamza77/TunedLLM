@@ -157,10 +157,12 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    ports = {self.ports}
+    port = ports[{i}]
     logging.info("worker " + str({i}) + " started")
     worker_dir = f"{self.root}/jobs/batch_{i}"
     df = pd.read_parquet(worker_dir + "/data.parquet")
-    llm = LLM(root_dir=None, model_name="{self.model_name}", port="{self.ports[i]}")"""
+    llm = LLM(root_dir=None, model_name="{self.model_name}", port=port)"""
         if self.chunk_scoring:
             self.worker_script += """
     result_df = pd.DataFrame()

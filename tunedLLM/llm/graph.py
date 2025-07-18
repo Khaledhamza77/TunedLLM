@@ -62,12 +62,14 @@ class Graph:
         state['job'] = "infer_topic_of_query"
         state['job_status'], state['topic'] = self.llm.query_to_topic(state['user_query'])
         self.logs.update('topic', state)
+        self.logs.save()
         return state
 
     def query_to_search(self, state: AgentState) -> AgentState:
         state["job"] = "query_to_search"
         state["job_status"], state["path_to_search_queries"] = self.llm.query_to_search(state)
         self.logs.update('path_to_search_queries', state)
+        self.logs.save()
         return state
 
     def get_papers(self, state: AgentState) -> AgentState:
