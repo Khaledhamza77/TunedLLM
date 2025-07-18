@@ -167,7 +167,7 @@ if __name__ == "__main__":
     llm = LLM(root_dir=None, model_name="{self.model_name}", port={port})"""
         if self.chunk_scoring:
             self.worker_script += """
-    result_df = pd.DataFrame()
+    result = []
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=500,
         chunk_overlap=20,
@@ -179,7 +179,7 @@ if __name__ == "__main__":
             full_text = f.read()
         chunks = text_splitter.split_text(full_text)
         for chk_idx, chunk in enumerate(chunks):
-            result_df = result_df.append(
+            result.append(
                 dict(
                     chunk_id = str(row['id']) + "_" + str(chk_idx),
                     id = str(row["id"]),
@@ -191,6 +191,7 @@ if __name__ == "__main__":
                 ignore_index=True
             )
     try:
+        result_df = pd.DataFrame(result); del result
         result_df.to_parquet(f"{self.root}/chunks_{i}.parquet", index=False)
         logging.info("Chunking completed.")
     except Exception as e:
