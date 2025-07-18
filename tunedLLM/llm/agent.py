@@ -106,6 +106,7 @@ You will return the question and answer pairs in a json format with the followin
             )
             response = json.loads(resp['message']['content'])
             topic = response['topic']
+            logging.info(f"Generated topic for query successfully: {topic}")
             return "sucess", topic
         except Exception as e:
             logging.error(f'Could not generate topic: {e}')
@@ -131,7 +132,6 @@ Paper Abstract: {doc['abstract']}"""
         try:
             response = json.loads(resp['message']['content'])
             relevance_class = response['relevance_class']
-            logging.info(f"Relevance class determined: {relevance_class}")
             return relevance_class
         except KeyError as e:
             logging.error(f"Error in response format from Ollama: {e}")
@@ -156,7 +156,6 @@ Chunk: {chunk}"""
         )
         try:
             qa_pairs = json.loads(resp['message']['content'])
-            logging.info(f"QA pairs generated successfully.")
             return qa_pairs
         except KeyError as e:
             logging.error(f"Error in response format from Ollama: {e}")
