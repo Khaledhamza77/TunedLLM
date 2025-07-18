@@ -58,6 +58,7 @@ class Graph:
                     if not pd.isna(cell_value) and cell_value.strip() != "":
                         state['starting_node'] = col
                         state['job'], state['job_status'] = self.get_state_job(col)
+                        state[col] = cell_value
         else:
             state['run_id'] = str(uuid4())
             state['starting_node'] = 'onboarding'
