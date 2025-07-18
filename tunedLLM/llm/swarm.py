@@ -175,14 +175,14 @@ if __name__ == "__main__":
         is_separator_regex=False,
     )
     for _, row in df.iterrows():
-        with open(f"{self.root}/full_texts/"+row['id']+".txt", 'r', encoding='utf-8') as f:
+        with open(f"{self.root}/full_texts/"+str(row['id'])+".txt", 'r', encoding='utf-8') as f:
             full_text = f.read()
         chunks = text_splitter.split_text(full_text)
         for chk_idx, chunk in enumerate(chunks):
             result_df = result_df.append(
                 dict(
-                    chunk_id = row['id'] + "_" + str(chk_idx),
-                    id = row["id"],
+                    chunk_id = str(row['id']) + "_" + str(chk_idx),
+                    id = str(row["id"]),
                     chunk = chunk,
                     relevance_class = self.llm.score_chunk('{self.user_query}', chunk, row),
                     title = row['title'],
