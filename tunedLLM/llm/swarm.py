@@ -206,13 +206,15 @@ if __name__ == "__main__":
     train_dataset = []
     train_system_message = "{self.train_prompt}"
     path = f"{self.root}/dataset_{i}.json"
-    for _, row in df.iterrows():
+    for idx, row in df.iterrows():
         qa_pairs = llm.chunk_to_qa(
             chunk=row['chunk'],
             user_query="{self.user_query}",
             title=row['title'],
             abstract=row['abstract']
         )
+        if idx % 5 == 0 and idx != 0:
+            print('Worker '+str({i})+' Progress update: '+str(idx)+'/'+str(total))
         for qa_pair in qa_pairs:
             train_dataset.append(
                 dict(
