@@ -53,10 +53,10 @@ class LLMSwarm:
             bufsize=1
         )
         for line in result.stdout:
-            if 'ERROR' in line:
+            if "HTTP Request:" in line:
+                continue 
+            elif 'ERROR' in line:
                 logging.error(line.strip())
-            else:
-                logging.info(line.strip())
 
         returncode = result.wait()
         if returncode != 0:
