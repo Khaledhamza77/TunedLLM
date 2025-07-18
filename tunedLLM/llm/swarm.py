@@ -184,7 +184,7 @@ if __name__ == "__main__":
                     chunk_id = str(row['id']) + "_" + str(chk_idx),
                     id = str(row["id"]),
                     chunk = chunk,
-                    relevance_class = self.llm.score_chunk('{self.user_query}', chunk, row),
+                    relevance_class = llm.score_chunk('{self.user_query}', chunk, row),
                     title = row['title'],
                     abstract = row['abstract']
                 ),
