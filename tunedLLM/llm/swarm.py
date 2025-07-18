@@ -204,12 +204,12 @@ if __name__ == "__main__":
         elif self.chunk_to_qa:
             self.worker_script += """
     train_dataset = []
-    train_system_message = str({self.train_prompt})
+    train_system_message = "{self.train_prompt}"
     path = f"{self.root}/dataset_{i}.json"
     for _, row in df.iterrows():
         qa_pairs = llm.chunk_to_qa(
             chunk=row['chunk'],
-            user_query=str({self.user_query}),
+            user_query="{self.user_query}",
             title=row['title'],
             abstract=row['abstract']
         )

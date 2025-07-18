@@ -199,6 +199,7 @@ class Graph:
             state["path_to_chunks"] = f"{self.root}/{state['run_id']}/data/chunks.parquet"
             state["job_status"] = "success"
             self.logs.update('path_to_chunks', state)
+            self.logs.save()
             logging.info("Chunking completed.")
         except Exception as e:
             state["path_to_chunks"] = np.nan
@@ -218,6 +219,7 @@ class Graph:
             state["path_to_chunks"] = swarm.run()
             state["job_status"] = "success"
             self.logs.update('path_to_chunks', state)
+            self.logs.save()
             logging.info("Successfully chunked and saved chunks")
         except Exception as e:
             state["path_to_chunks"] = ""
@@ -226,7 +228,7 @@ class Graph:
         return state
 
     def chunks_to_qa(self, state: AgentState) -> AgentState:
-        self.train_prompt = f"""You are an AI subject-matter expert which should provide expert-level answers on the followin topic:
+        train_prompt = f"""You are an AI subject-matter expert which should provide expert-level answers on the followin topic:
 {state['topic']}
 The user will ask you a question on that topic and you will answer it fully and provide all relevant details."""
         state["job"] = "chunks_to_q/a_pairs"
@@ -244,7 +246,7 @@ The user will ask you a question on that topic and you will answer it fully and 
                 train_dataset.append(
                     {
                         "messages": [
-                            {"role": "system", "content": self.train_prompt},
+                            {"role": "system", "content": train_prompt},
                             {"role": "user", "content": qa_pair["question"]},
                             {"role": "assistant", "content": qa_pair["answer"]}
                         ]
@@ -256,6 +258,7 @@ The user will ask you a question on that topic and you will answer it fully and 
             state['path_to_qa_pairs'] = path
             state['job_status'] = "success"
             self.logs.update('path_to_qa_pairs', state)
+            self.logs.save()
             logging.info(f'Training dataset generated successfully and saved to {path}')
         except Exception as e:
             logging.error(f'Training dataset was not saved: {e}')
@@ -265,16 +268,21 @@ The user will ask you a question on that topic and you will answer it fully and 
     
     def parallelized_chunks_to_qa(self, state: AgentState) -> AgentState:
         state["job"] = "parallelized_chunks_to_q/a_pairs"
+        train_prompt = f"""You are an AI subject-matter expert which should provide expert-level answers on the followin topic:
+{state['topic']}
+The user will ask you a question on that topic and you will answer it fully and provide all relevant details."""
         swarm = LLMSwarm(
             model_name=state['model_name'],
             user_query=state['user_query'],
             root_dir=f"{self.root}/{state['run_id']}/data",
-            chunk_to_qa=state['path_to_chunks']
+            chunk_to_qa=state['path_to_chunks'],
+            train_prompt=train_prompt
         )
         try:
             state["path_to_qa_pairs"] = swarm.run(qa=True)
             state["job_status"] = "success"
             self.logs.update('path_to_qa_pairs', state)
+            self.logs.save()
         except Exception as e:
             state["path_to_qa_pairs"] = ""
             state["job_status"] = "failure"
