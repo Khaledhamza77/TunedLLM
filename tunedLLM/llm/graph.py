@@ -32,6 +32,18 @@ class Graph:
         self.rag = rag
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
+    def get_state_job(self, stage: str = None):
+        if stage == 'topic':
+            return 'infer_topic_of_query', 'success'
+        elif stage == 'path_to_search_queries':
+            return 'query_to_search', 'success'
+        elif stage == 'path_to_relevant_papers':
+            return 'get_papers_and_their_metadata', 'success'
+        elif stage == 'path_to_chunks':
+            return 'chunk_and_score', 'success'
+        elif stage == 'path_to_qa_pairs':
+            return 'chunks_to_q/a_pairs', 'success'
+    
     def onboarding(self, state: AgentState) -> AgentState:
         self.logs = Logs(self.root)
         df = self.logs.log_file
@@ -45,8 +57,9 @@ class Graph:
                     cell_value = target_row[col]
                     if not pd.isna(cell_value) and cell_value.strip() != "":
                         state['starting_node'] = col
+                        state['job'], state['job_status'] = self.get_state_job(col)
         else:
-            state['run_id'] = str(uuid4()) 
+            state['run_id'] = str(uuid4())
             state['starting_node'] = 'onboarding'
             self.logs.update('run_id', state)
             self.logs.update('user_query', state)
