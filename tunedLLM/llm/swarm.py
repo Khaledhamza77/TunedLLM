@@ -233,7 +233,8 @@ if __name__ == "__main__":
             train_dataset.append(dict())
             logging.error('Lost 1 chunk because of LLM output')
     try:
-        train_dataset.to_json(path, orient="records")
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(train_dataset, f, indent=2)
         logging.info("train dataset completed.")
     except Exception as e:
         logging.error("train dataset failed: " + str(e))"""

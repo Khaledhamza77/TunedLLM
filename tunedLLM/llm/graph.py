@@ -17,6 +17,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 class Graph:
     def __init__(
             self,
+            diversify: bool,
             total_docs: int,
             user_query: str,
             root_dir: str, 
@@ -32,6 +33,7 @@ class Graph:
         self.finetune = finetune
         self.rag = rag
         self.total_docs = total_docs
+        self.diversify = diversify
         logging.getLogger('ollama').setLevel(logging.WARNING)
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
@@ -82,6 +84,34 @@ class Graph:
         self.logs.save()
         return state
 
+    def diversify_query(self, state: AgentState) -> str:
+        if state['diversify']:
+            return 'augment_search_query'
+        else:
+            return 'topic_as_search_query'
+    
+    def topic_as_query(self, state: AgentState) -> AgentState:
+        state["job"] = "query_to_search"
+        try:
+            sq = {
+                "search_queries": {
+                    "0": state['topic']
+                }
+            }
+            path_to_search_queries = f"{self.root}/{state['run_id']}/data/search_queries.json"
+            with open(path_to_search_queries, 'w') as f:
+                json.dump(sq, f, indent=4)
+            state["job_status"] = "success"
+            state["path_to_search_queries"] = path_to_search_queries
+            self.logs.update('path_to_search_queries', state)
+            self.logs.save()
+            logging.info("Saved topic as search query")
+            return state
+        except Exception as e:
+            logging.error(f"Failed to set topic as search query: {e}")
+            state['job_status'] = 'failure'
+            return state
+
     def query_to_search(self, state: AgentState) -> AgentState:
         state["job"] = "query_to_search"
         state["job_status"], state["path_to_search_queries"] = self.llm.query_to_search(state)
@@ -91,11 +121,14 @@ class Graph:
 
     def get_papers(self, state: AgentState) -> AgentState:
         core = CoreDB(f"{self.root}/{state['run_id']}")
-        ceilings = [
-            int(self.total_docs/2),
-            int(self.total_docs/4),
-            int(self.total_docs/8),
-            int(self.total_docs/16)]
+        if state['diversify']:
+            ceilings = [
+                int(self.total_docs/2),
+                int(self.total_docs/4),
+                int(self.total_docs/8),
+                int(self.total_docs/16)]
+        else:
+            ceilings = [self.total_docs]
         state["job"] = "get_papers_and_their_metadata"
         with open(state["path_to_search_queries"], 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -308,6 +341,10 @@ class Graph:
             self.query_to_topic
         )
         workflow.add_node(
+            "topic_to_search",
+            self.topic_as_query
+        )
+        workflow.add_node(
             "query_to_search",
             self.query_to_search,
         )
@@ -352,7 +389,15 @@ class Graph:
                 "path_to_qa_pairs": END
             }
         )
-        workflow.add_edge("query_to_topic", "query_to_search")
+        workflow.add_conditional_edges(
+            "query_to_topic",
+            self.diversify_query,
+            {
+                "augment_search_query": "query_to_search",
+                "topic_as_search_query": "topic_to_search"
+            }
+        )
+        workflow.add_edge("topic_to_search", "get_papers")
         workflow.add_edge("query_to_search", "get_papers")
         workflow.add_edge("get_papers", "check_gpu_infrastructure_1")
         workflow.add_conditional_edges(
@@ -402,6 +447,7 @@ class Graph:
         state["user_query"] = self.user_query
         state["finetune"] = self.finetune
         state["rag"] = self.rag
+        state["diversify"] = self.diversify
         try:
             self.llm = LLM(root_dir=self.root, model_name=self.model_name, port=self.port)
         except Exception as e:

@@ -4,6 +4,7 @@ class AgentState(TypedDict):
     model_name: str | None
     run_id: str | None
     user_query: str | None
+    diversify: bool | None
     topic: str | None
     finetune: bool | None
     rag: bool | None
