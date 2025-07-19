@@ -441,7 +441,7 @@ class Graph:
                 "path_to_search_queries": "get_papers",
                 "path_to_relevant_papers": "check_gpu_infrastructure_1",
                 "path_to_chunks": "check_gpu_infrastructure_2",
-                "path_to_qa_pairs": "tune"
+                "path_to_qa_pairs": "setup_yaml_config_file"
             }
         )
         workflow.add_conditional_edges(
@@ -476,6 +476,7 @@ class Graph:
         workflow.add_edge("chunks_to_qa", "cooldown")
         workflow.add_edge("parallelized_chunks_to_qa", "cooldown")
         workflow.add_edge("cooldown", "setup_yaml_config_file")
+        workflow.add_edge("setup_yaml_config_file", "tune")
         workflow.add_edge("tune", "merge_LoRA_weights_for_standalone_model")
         workflow.add_edge("merge_LoRA_weights_for_standalone_model", "Convert_model_to_work_with_Ollama")
         workflow.add_edge("Convert_model_to_work_with_Ollama", "benchmark")
