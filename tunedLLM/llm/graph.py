@@ -349,7 +349,7 @@ class Graph:
     def setup_yaml_ft_config_file(self, state: AgentState) -> AgentState:
         return state
         
-    def finetune(self, state: AgentState) -> AgentState:
+    def finetune_model(self, state: AgentState) -> AgentState:
         return state
     
     def merge_weights(self, state: AgentState) -> AgentState:
@@ -417,7 +417,7 @@ class Graph:
         )
         workflow.add_node(
             "tune",
-            self.finetune
+            self.finetune_model
         )
         workflow.add_node(
             "merge_LoRA_weights_for_standalone_model",
