@@ -57,6 +57,7 @@ class Graph:
         matching_rows = df[df['user_query'] == state['user_query']]
         if not matching_rows.empty:
             target_row = matching_rows.iloc[0]
+            self.logs.index = matching_rows.index[0]
             state['run_id'] = target_row['run_id']
             state['starting_node'] = 'onboarding'
             for col in df.columns:
