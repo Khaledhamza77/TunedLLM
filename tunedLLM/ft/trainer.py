@@ -45,7 +45,7 @@ class Tuner:
             last_checkpoint = get_last_checkpoint(training_args.output_dir)
         return last_checkpoint
     
-    def cleanup(sample):
+    def cleanup(self, sample):
         messages = sample.get("messages")
         if not messages:
             return False
