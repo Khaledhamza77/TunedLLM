@@ -1,148 +1,115 @@
 import os
 import torch
-import logging
-from typing import Optional
-from datetime import datetime
+from trl import SFTConfig
+from trl import SFTTrainer
+import torch.distributed as dist
 from datasets import load_dataset
-from dataclasses import dataclass
-from distutils.util import strtobool
-from transformers.trainer_utils import get_last_checkpoint
-from trl import SFTTrainer, ModelConfig, SFTConfig, get_peft_config
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-
-os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
-
-
-@dataclass
-class ScriptArguments:
-    dataset_id_or_path: str
-    dataset_splits: str = "train"
-    tokenizer_name_or_path: str = None
+from peft import LoraConfig, PeftModel
+from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForImageTextToText, BitsAndBytesConfig
 
 class Tuner:
-    def __init__(
-            self,
-            model_args: ModelConfig,
-            script_args: ScriptArguments,
-            training_args: SFTConfig
-        ):
-        self.model_args = model_args
-        self.script_args = script_args
-        self.training_args = training_args
+    def __init__(self, root_dir: str = None, local_rank: int = 0):
+        self.root = root_dir
+        dist.init_process_group(backend='nccl')
+        torch.cuda.set_device(local_rank)
+        self.model_id = "google/gemma-3-1b-pt" # or `google/gemma-3-4b-pt`, `google/gemma-3-12b-pt`, `google/gemma-3-27b-pt`
     
-        logging.basicConfig(level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
-        handler = logging.StreamHandler()
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-        self.logger.addHandler(handler)
-
-        self.setup()
-    
-    def get_checkpoint(self, training_args: SFTConfig):
-        last_checkpoint = None
-        if os.path.isdir(training_args.output_dir):
-            last_checkpoint = get_last_checkpoint(training_args.output_dir)
-        return last_checkpoint
+        if self.model_id == "google/gemma-3-1b-pt":
+            self.model_class = AutoModelForCausalLM
+        else:
+            self.model_class = AutoModelForImageTextToText
+        
+        if torch.cuda.get_device_capability()[0] >= 8:
+            torch_dtype = torch.bfloat16
+        else:
+            torch_dtype = torch.float16
+        
+        model_kwargs = dict(
+            attn_implementation="eager", # Use "flash_attention_2" when running on Ampere or newer GPU
+            torch_dtype=torch_dtype # What torch dtype to use, defaults to auto
+        )
+        
+        model_kwargs["quantization_config"] = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_quant_type='nf4',
+            bnb_4bit_compute_dtype=model_kwargs['torch_dtype'],
+            bnb_4bit_quant_storage=model_kwargs['torch_dtype'],
+        )
+        
+        model = self.model_class.from_pretrained(self.model_id, **model_kwargs)
+        tokenizer = AutoTokenizer.from_pretrained("google/gemma-3-1b-it")
+        
+        peft_config = LoraConfig(
+            lora_alpha=16,
+            lora_dropout=0.05,
+            r=8,
+            bias="none",
+            target_modules="all-linear",
+            task_type="CAUSAL_LM",
+            modules_to_save=["lm_head", "embed_tokens"]
+        )
+        
+        self.output_dir = f"{root_dir}/tuning/gemma-qlora-energyai",
+        args = SFTConfig(
+            output_dir=self.output_dir,
+            max_seq_length=256,
+            packing=True,
+            num_train_epochs=1,
+            per_device_train_batch_size=8,
+            gradient_accumulation_steps=2,
+            gradient_checkpointing=True,
+            gradient_checkpointing_kwargs={"use_reentrant": False},
+            optim="adamw_torch_fused",
+            logging_steps=10,
+            save_strategy="epoch",
+            learning_rate=2e-4,
+            fp16=True if torch_dtype == torch.float16 else False,
+            bf16=True if torch_dtype == torch.bfloat16 else False,
+            max_grad_norm=0.3,                      
+            warmup_ratio=0.03,                    
+            lr_scheduler_type="constant",         
+            push_to_hub=False,     
+            report_to="tensorboard",          
+            dataset_kwargs={
+                "add_special_tokens": False,
+                "append_concat_token": True
+            }
+        )
+        
+        
+        train_dataset = load_dataset('json', data_files=f"{root_dir}/data/dataset.json", split='train')
+        train_dataset = train_dataset.filter(self.cleanup)
+        
+        self.trainer = SFTTrainer(
+            model=model,
+            args=args,
+            train_dataset=train_dataset,
+            peft_config=peft_config,
+            processing_class=tokenizer
+        )
     
     def cleanup(self, sample):
-        messages = sample.get("messages")
-        if not messages:
-            return False
-        question = messages[1]
-        answer = messages[2]
-
-        if not question or not question['content'].strip():
-            return False
-        if not answer or not answer['content'].strip():
-            return False
-        return True
-    
-    def setup(self):
-        self.logger.info(f'Model parameters {self.model_args}')
-        self.logger.info(f'Script parameters {self.script_args}')
-        self.logger.info(f'Training/evaluation parameters {self.training_args}')
-
-        self.train_dataset = load_dataset('json', data_files=self.script_args.dataset_id_or_path, split='train')
-        self.train_dataset = self.train_dataset.filter(self.cleanup)
-        self.logger.info(f'Loaded dataset with {len(self.train_dataset)} samples and the following features: {self.train_dataset.features}')
-
-
-        self.tokenizer = AutoTokenizer.from_pretrained(
-            self.script_args.tokenizer_name_or_path if self.script_args.tokenizer_name_or_path else self.model_args.model_name_or_path,
-            revision=self.model_args.model_revision,
-            trust_remote_code=self.model_args.trust_remote_code,
-        )
-        if self.tokenizer.pad_token is None: 
-            self.tokenizer.pad_token = self.tokenizer.eos_token
-
-        self.model_kwargs = dict(
-            revision=self.model_args.model_revision,
-            trust_remote_code=self.model_args.trust_remote_code,
-            attn_implementation=self.model_args.attn_implementation,
-            torch_dtype=self.model_args.torch_dtype if self.model_args.torch_dtype in ['auto', None] else getattr(torch, self.model_args.torch_dtype),
-            use_cache=False if self.training_args.gradient_checkpointing else True,
-            low_cpu_mem_usage=True if not strtobool(os.environ.get("ACCELERATE_USE_DEEPSPEED", "false")) else None
-        )
-
-        if self.model_args.load_in_4bit: 
-            self.model_kwargs['quantization_config'] = BitsAndBytesConfig(
-                load_in_4bit=True,
-                bnb_4bit_use_double_quant=True,
-                bnb_4bit_quant_type='nf4',
-                bnb_4bit_compute_dtype=self.model_kwargs['torch_dtype'],
-                bnb_4bit_quant_storage=self.model_kwargs['torch_dtype'],
-            )
+            messages = sample.get("messages")
+            if not messages:
+                return False
+            question = messages[1]
+            answer = messages[2]
         
-        if self.model_args.use_peft:
-            self.peft_config = get_peft_config(self.model_args)
-        else:
-            self.peft_config = None
-
-        self.model = AutoModelForCausalLM.from_pretrained(self.model_args.model_name_or_path, **self.model_kwargs)
-        self.training_args.distributed_state.wait_for_everyone()
+            if not question or not question['content'].strip():
+                return False
+            if not answer or not answer['content'].strip():
+                return False
+            return True
     
     def tune(self):
-        trainer = SFTTrainer(
-            model=self.model,
-            args=self.training_args,
-            train_dataset=self.train_dataset,
-            tokenizer=self.tokenizer,
-            peft_config=self.peft_config,
-        )
-        if trainer.accelerator.is_main_process and self.peft_config:
-            trainer.model.print_trainable_parameters()
+        self.trainer.train()
+        self.trainer.save_model()
+        model = self.model_class.from_pretrained(self.model_id, low_cpu_mem_usage=True)
 
-        last_checkpoint = self.get_checkpoint(self.training_args)
-        if last_checkpoint is not None and self.training_args.resume_from_checkpoint is None:
-            self.logger.info(f'Checkpoint detected, resuming training at {last_checkpoint}.')
+        peft_model = PeftModel.from_pretrained(model, self.output_dir)
+        merged_model = peft_model.merge_and_unload()
+        merged_model.save_pretrained("merged_model", safe_serialization=True, max_shard_size="2GB")
 
-        self.logger.info(f'*** Starting training {datetime.now().strftime("%Y-%m-%d %H:%M:%S")} for {self.training_args.num_train_epochs} epochs***')
-        train_result = trainer.train(resume_from_checkpoint=last_checkpoint)
-
-        metrics = train_result.metrics
-        metrics['train_samples'] = len(self.train_dataset)
-        trainer.log_metrics('train', metrics)
-        trainer.save_metrics('train', metrics)
-        trainer.save_state()
-        
-        self.logger.info('*** Save model ***')
-        if trainer.is_fsdp_enabled and self.peft_config:
-            trainer.accelerator.state.fsdp_plugin.set_state_dict_type('FULL_STATE_DICT')
-        trainer.model.config.use_cache = True
-        trainer.save_model(self.training_args.output_dir)
-        self.logger.info(f'Model saved to {self.training_args.output_dir}')
-        self.training_args.distributed_state.wait_for_everyone()
-
-        self.tokenizer.save_pretrained(self.training_args.output_dir)
-        self.logger.info(f'Tokenizer saved to {self.training_args.output_dir}')
-
-
-        if trainer.accelerator.is_main_process:
-            trainer.create_model_card({'tags': ['sft', 'tutorial', 'philschmid']})
-
-        if self.training_args.push_to_hub is True:
-            self.logger.info('Pushing to hub...')
-            trainer.push_to_hub()
-
-        self.logger.info('*** Training complete! ***')
+        processor = AutoTokenizer.from_pretrained(self.output_dir)
+        processor.save_pretrained(f"{self.root}/tuning/gemma-qlora-energyai-standalone")

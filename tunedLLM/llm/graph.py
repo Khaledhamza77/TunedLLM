@@ -346,88 +346,40 @@ class Graph:
             logging.error(f'Failed to close all ollama workers: {e}')
         return state
     
-    def setup_yaml_ft_config_file(self, state: AgentState) -> AgentState:
-        os.makedirs(f"{self.root}/{state['run_id']}/tuning", exist_ok=True)
-        config = f"""#Model arguments
-model_name_or_path: google/gemma-3-1b-it
-tokenizer_name_or_path: google/gemma-3-1b-it
-model_revision: main
-torch_dtype: bfloat16
-attn_implementation: eager
-bf16: true
-output_dir: {self.root}/{state['run_id']}/tuning/gemma-3-1b-it-qlora-energyai
- 
-# Dataset arguments
-dataset_id_or_path: {state['path_to_qa_pairs']}
-max_seq_length: 1024
-packing: true
- 
-# LoRA arguments
-use_peft: true
-load_in_4bit: true
-lora_target_modules: "all-linear"
-lora_modules_to_save: ["lm_head", "embed_tokens"]
-lora_r: 16
-lora_alpha: 16
- 
-# Training arguments
-num_train_epochs: 1
-per_device_train_batch_size: 8
-gradient_accumulation_steps: 2
-gradient_checkpointing: true
-gradient_checkpointing_kwargs:
-  use_reentrant: false
-learning_rate: 2.0e-4 
-lr_scheduler_type: constant
-warmup_ratio: 0.1
- 
-# Logging arguments
-logging_strategy: steps
-logging_steps: 5
-report_to:
-- tensorboard
-save_strategy: "epoch"
-seed: 42"""
-        with open(f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-qlora.yaml", 'w') as f:
-            f.write(config)
-        state['job'] = 'setting-up yaml config file for fine tuning'
-        state['job_status'] = 'success'
-        state['yaml_file_path'] = f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-qlora.yaml"
-        self.logs.update('yaml_file_path', state)
-        self.logs.save()
-        return state 
-        
-    def finetune_model(self, state: AgentState) -> AgentState:
-        state['job'] = 'finetuning model'
+    def setup_tuning_script(self, state: AgentState) -> AgentState:
+        state['job'] = 'setting_up_tuning_script'
         script = """
-from transformers import set_seed
-from trl import TrlParser, ModelConfig, SFTConfig
-from tunedLLM.ft.trainer import ScriptArguments, Tuner
+from tunedLLM.ft.trainer import Tuner
 
 if __name__ == '__main__':
-    parser = TrlParser((ModelConfig, ScriptArguments, SFTConfig))
-    model_args, script_args, training_args = parser.parse_args_and_config()
-
-    set_seed(training_args.seed)
+    local_rank = int(os.environ.get("LOCAL_RANK", 0))
     Tuner(
-        model_args=model_args,
-        script_args=script_args,
-        training_args=training_args
-    ).tune()"""
-        with open(f"{self.root}/{state['run_id']}/tuning/script.py", 'w') as f:
-            f.write(script)
+        root_dir={root},
+        local_rank=local_rank
+    ).tune()""".format(root=f"{self.root}/{state['run_id']}")
+        try:
+            with open(f"{self.root}/{state['run_id']}/tuning/script.py", 'w') as f:
+                f.write(script)
+            
+            state['job_status'] = 'success'
+            state['tuning_script_path'] = f"{self.root}/{state['run_id']}/tuning/script.py"
+            self.logs.update('tuning_script_path', state)
+            self.logs.save()
+            logging.info('Successfully set up script path')
+        except Exception as e:
+            state['job_status'] = 'failure'
+            state['tuning_script_path'] = ''
+            logging.error(f'Failed to set up script path: {e}')
+        return state
+        
+    def finetune_model(self, state: AgentState) -> AgentState:
         try:
             result = subprocess.Popen(
                 [
-                    'accelerate',
-                    'launch',
-                    '--config_file',
-                    f'{self.root}/accelerate_config.yaml',
-                    '--num_processes',
+                    'torchrun',
+                    '--nproc_per_node',
                     '4',
-                    f"{self.root}/{state['run_id']}/tuning/script.py",
-                    "--config",
-                    state['yaml_file_path']
+                    state['tuning_script_path'],
                 ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
@@ -442,25 +394,19 @@ if __name__ == '__main__':
 
             returncode = result.wait()
             if returncode != 0:
-                logging.error(f"Script {script} failed with return code {returncode}.")
+                logging.error(f"Script failed with return code {returncode}.")
                 state['job_status'] = 'failure'
-                state['finetuned_model_path'] = ''
+                state['standalone_model_path'] = ''
                 return state
             state['job_status'] = 'success'
-            state['finetuned_model_path'] = f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-it-qlora-energyai"
-            self.logs.update('finetuned_model_path', state)
+            state['standalone_model_path'] = f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-it-qlora-energyai"
+            self.logs.update('standalone_model_path', state)
             self.logs.save()
             logging.info("Finished tuning")
         except Exception as e:
             state['job_status'] = 'failure'
-            state['finetuned_model_path'] = ''
+            state['standalone_model_path'] = ''
             logging.error(f"Tuning failed: {e}")
-        return state
-    
-    def merge_weights(self, state: AgentState) -> AgentState:
-        return state
-    
-    def convert_model(self, state: AgentState) -> AgentState:
         return state
     
     def benchmark(self, state: AgentState) -> AgentState:
@@ -517,20 +463,12 @@ if __name__ == '__main__':
             self.cooldown
         )
         workflow.add_node(
-            "setup_yaml_config_file",
-            self.setup_yaml_ft_config_file
+            "setup_tuning_script",
+            self.setup_tuning_script
         )
         workflow.add_node(
             "tune",
             self.finetune_model
-        )
-        workflow.add_node(
-            "merge_LoRA_weights_for_standalone_model",
-            self.merge_weights
-        )
-        workflow.add_node(
-            "Convert_model_to_work_with_Ollama",
-            self.convert_model
         )
         workflow.add_node(
             "benchmark",
@@ -580,11 +518,9 @@ if __name__ == '__main__':
         )
         workflow.add_edge("chunks_to_qa", "cooldown")
         workflow.add_edge("parallelized_chunks_to_qa", "cooldown")
-        workflow.add_edge("cooldown", "setup_yaml_config_file")
-        workflow.add_edge("setup_yaml_config_file", "tune")
-        workflow.add_edge("tune", "merge_LoRA_weights_for_standalone_model")
-        workflow.add_edge("merge_LoRA_weights_for_standalone_model", "Convert_model_to_work_with_Ollama")
-        workflow.add_edge("Convert_model_to_work_with_Ollama", "benchmark")
+        workflow.add_edge("cooldown", "setup_tuning_script")
+        workflow.add_edge("setup_tuning_script", "tune")
+        workflow.add_edge("tune", "benchmark")
         workflow.add_edge("benchmark", END)
         try:
             graph = workflow.compile()

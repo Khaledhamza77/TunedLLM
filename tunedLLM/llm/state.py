@@ -19,5 +19,5 @@ class AgentState(TypedDict):
     parallel_chunking: bool | None
     parallel_qa: bool | None
 
-    yaml_file_path: str | None
-    finetuned_model_path: str | None
+    tuning_script_path: str | None
+    standalone_model_path: str | None
