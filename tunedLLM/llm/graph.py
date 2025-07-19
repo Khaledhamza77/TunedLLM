@@ -387,7 +387,7 @@ report_to:
 - tensorboard
 save_strategy: "epoch"
 seed: 42"""
-        with open(f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-qlore.yaml", 'w') as f:
+        with open(f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-qlora.yaml", 'w') as f:
             f.write(config)
         state['job'] = 'setting-up yaml config file for fine tuning'
         state['job_status'] = 'success'
