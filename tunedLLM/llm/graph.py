@@ -50,6 +50,12 @@ class Graph:
             return 'chunk_and_score', 'success'
         elif stage == 'path_to_qa_pairs':
             return 'chunks_to_q/a_pairs', 'success'
+        elif stage == 'tuning_script_path':
+            return 'setup_tuning_script', 'success'
+        elif stage == 'standalone_model_path':
+            return 'finetuning_model', 'success'
+        elif stage == 'benchmark_results_path':
+            return 'benchmarking_model', 'success'
     
     def onboarding(self, state: AgentState) -> AgentState:
         self.logs = Logs(self.root)
@@ -375,6 +381,7 @@ if __name__ == '__main__':
         return state
         
     def finetune_model(self, state: AgentState) -> AgentState:
+        state['job'] = 'finetuning_model'
         try:
             result = subprocess.Popen(
                 [

@@ -21,3 +21,4 @@ class AgentState(TypedDict):
 
     tuning_script_path: str | None
     standalone_model_path: str | None
+    benchmark_results_path: str | None
