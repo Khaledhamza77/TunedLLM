@@ -353,7 +353,6 @@ model_name_or_path: google/gemma-3-1b-it
 tokenizer_name_or_path: google/gemma-3-1b-it
 model_revision: main
 torch_dtype: bfloat16
-attn_implementation: flash_attention_2
 bf16: true
 tf32: true
 output_dir: {self.root}/{state['run_id']}/tuning/gemma-3-1b-it-qlora-energyai
