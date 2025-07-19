@@ -354,7 +354,7 @@ from tunedLLM.ft.trainer import Tuner
 if __name__ == '__main__':
     local_rank = int(os.environ.get("LOCAL_RANK", 0))
     Tuner(
-        root_dir={root},
+        root_dir="{root}",
         local_rank=local_rank
     ).tune()""".format(root=f"{self.root}/{state['run_id']}")
         try:
