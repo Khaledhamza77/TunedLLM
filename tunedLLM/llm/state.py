@@ -18,3 +18,6 @@ class AgentState(TypedDict):
     path_to_qa_pairs: str | None
     parallel_chunking: bool | None
     parallel_qa: bool | None
+
+    yaml_file_path: str | None
+    finetuned_model_path: str | None

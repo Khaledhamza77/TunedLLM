@@ -17,7 +17,8 @@ class Logs:
                 'path_to_search_queries',
                 'path_to_relevant_papers',
                 'path_to_chunks',
-                'path_to_qa_pairs'
+                'path_to_qa_pairs',
+                'yaml_file_path'
             ])
         self.index = self.log_file.index.max() + 1 if not self.log_file.empty else 0
         logging.info('Initialized logs file client ...')

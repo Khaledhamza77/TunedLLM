@@ -7,8 +7,8 @@ from datasets import load_dataset
 from dataclasses import dataclass
 from distutils.util import strtobool
 from transformers.trainer_utils import get_last_checkpoint
-from trl import SFTTrainer, TrlParser, ModelConfig, SFTConfig, get_peft_config
-from transformers import AutoModelForCausalLM, AutoTokenizer, set_seed, BitsAndBytesConfig
+from trl import SFTTrainer, ModelConfig, SFTConfig, get_peft_config
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "1"
 
@@ -37,6 +37,8 @@ class Tuner:
         handler = logging.StreamHandler()
         handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
         self.logger.addHandler(handler)
+
+        self.setup()
     
     def get_checkpoint(self, training_args: SFTConfig):
         last_checkpoint = None

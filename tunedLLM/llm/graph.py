@@ -347,9 +347,105 @@ class Graph:
         return state
     
     def setup_yaml_ft_config_file(self, state: AgentState) -> AgentState:
-        return state
+        os.makedirs(f"{self.root}/{state['run_id']}/tuning", exist_ok=True)
+        config = f"""
+model_name_or_path: google/gemma-3-1b-it
+tokenizer_name_or_path: google/gemma-3-1b-it
+model_revision: main
+torch_dtype: bfloat16
+attn_implementation: flash_attention_2
+bf16: true
+tf32: true
+output_dir: {self.root}/{state['run_id']}/tuning/gemma-3-1b-it-qlora-energyai
+ 
+# Dataset arguments
+dataset_id_or_path: {state['path_to_qa_pairs']}
+max_seq_length: 1024
+packing: true
+ 
+# LoRA arguments
+use_peft: true
+load_in_4bit: true
+lora_target_modules: "all-linear"
+lora_modules_to_save: ["lm_head", "embed_tokens"]
+lora_r: 16
+lora_alpha: 16
+ 
+# Training arguments
+num_train_epochs: 1
+per_device_train_batch_size: 8
+gradient_accumulation_steps: 2
+gradient_checkpointing: true
+gradient_checkpointing_kwargs:
+  use_reentrant: false
+learning_rate: 2.0e-4 
+lr_scheduler_type: constant
+warmup_ratio: 0.1
+ 
+# Logging arguments
+logging_strategy: steps
+logging_steps: 5
+report_to:
+- tensorboard
+save_strategy: "epoch"
+seed: 42"""
+        with open(f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-qlore.yaml", 'w') as f:
+            f.write(config)
+        state['job'] = 'setting-up yaml config file for fine tuning'
+        state['job_status'] = 'success'
+        state['yaml_file_path'] = f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-qlora.yaml"
+        self.logs.update('yaml_file_path', state)
+        self.logs.save()
+        return state 
         
     def finetune_model(self, state: AgentState) -> AgentState:
+        state['job'] = 'finetuning model'
+        script = """
+from transformers import set_seed
+from trl import TrlParser, ModelConfig, SFTConfig
+from tunedLLM.ft.trainer import ScriptArguments, Tuner
+
+if __name__ == __main__:
+    parser = TrlParser((ModelConfig, ScriptArguments, SFTConfig))
+    model_args, script_args, training_args = parser.parse_args_and_config()
+
+    set_seed(training_args.seed)
+    Tuner(
+        model_args=model_args,
+        script_args=script_args,
+        training_args=training_args
+    ).tune()"""
+        with open(f"{self.root}/{state['run_id']}/tuning/script.py", 'w') as f:
+            f.write(script)
+        try:
+            result = subprocess.Popen(
+                ['python', '-u', f"{self.root}/{state['run_id']}/tuning/script.py", '--config', state['yaml_file_path']],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1
+            )
+            for line in result.stdout:
+                if 'ERROR' in line:
+                    logging.error(line.strip())
+                else:
+                    logging.info(line.strip())
+
+            returncode = result.wait()
+            if returncode != 0:
+                logging.error(f"Script {script} failed with return code {returncode}.")
+                state['job_status'] = 'failure'
+                state['finetuned_model_path'] = ''
+                return state
+            state['job_status'] = 'success'
+            state['finetuned_model_path'] = f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-it-qlora-energyai"
+            self.logs.update('finetuned_model_path', state)
+            self.logs.save()
+            logging.info("Finished tuning")
+        except Exception as e:
+            state['job_status'] = 'failure'
+            state['finetuned_model_path'] = ''
+            logging.error(f"Tuning failed: {e}")
         return state
     
     def merge_weights(self, state: AgentState) -> AgentState:

@@ -1,7 +1,10 @@
 langchain
 langgraph
 graphviz
-datasets
+tensorboard
+flash-attn
+deepspeed==0.15.4
+datasets==3.1.0
 ollama==0.5.1
 requests==2.32.4
 pyarrow==20.0.0
