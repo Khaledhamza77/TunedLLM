@@ -348,7 +348,7 @@ class Graph:
     
     def setup_yaml_ft_config_file(self, state: AgentState) -> AgentState:
         os.makedirs(f"{self.root}/{state['run_id']}/tuning", exist_ok=True)
-        config = f"""
+        config = f"""#Model arguments
 model_name_or_path: google/gemma-3-1b-it
 tokenizer_name_or_path: google/gemma-3-1b-it
 model_revision: main
