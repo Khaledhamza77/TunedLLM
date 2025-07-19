@@ -49,7 +49,7 @@ class Tuner:
             modules_to_save=["lm_head", "embed_tokens"]
         )
         
-        self.output_dir = f"{root_dir}/tuning/gemma-qlora-energyai",
+        self.output_dir = f"{root_dir}/tuning/gemma-qlora-energyai"
         args = SFTConfig(
             output_dir=self.output_dir,
             max_seq_length=256,
