@@ -418,14 +418,6 @@ class Graph:
                 "parallel": "parallelized_chunks_to_qa"
             }
         )
-        workflow.add_conditional_edges(
-            "parallelized_chunk",
-            self.qa_pairs_routing,
-            {
-                "single": "chunks_to_qa",
-                "parallel": "parallelized_chunks_to_qa"
-            }
-        )
         workflow.add_edge("chunks_to_qa", END)
         workflow.add_edge("parallelized_chunks_to_qa", END)
         try:
