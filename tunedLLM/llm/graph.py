@@ -486,7 +486,10 @@ if __name__ == '__main__':
                 "path_to_search_queries": "get_papers",
                 "path_to_relevant_papers": "check_gpu_infrastructure_1",
                 "path_to_chunks": "check_gpu_infrastructure_2",
-                "path_to_qa_pairs": "setup_tuning_script"
+                "path_to_qa_pairs": "setup_tuning_script",
+                "tuning_script_path": "tune",
+                "standalone_model_path": "benchmark",
+                "benchmark_results_path": END
             }
         )
         workflow.add_conditional_edges(
