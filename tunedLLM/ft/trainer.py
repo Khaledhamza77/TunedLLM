@@ -31,7 +31,7 @@ class tuner:
             last_checkpoint = get_last_checkpoint(training_args.output_dir)
         return last_checkpoint
     
-    def tune(
+    def setup(
             self,
             model_args: ModelConfig,
             script_args: ScriptArguments,

@@ -182,7 +182,7 @@ if __name__ == "__main__":
         with open(f"{self.root}/full_texts/"+str(row['id'])+".txt", 'r', encoding='utf-8') as f:
             full_text = f.read()
         chunks = text_splitter.split_text(full_text)
-        if idx % 5 == 0 and idx != 0:
+        if idx % 2 == 0 and idx != 0:
             print('Worker '+str({i})+' Progress update: '+str(idx)+'/'+str(total))
         for chk_idx, chunk in enumerate(chunks):
             result.append(
