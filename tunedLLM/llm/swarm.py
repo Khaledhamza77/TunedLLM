@@ -42,7 +42,7 @@ class LLMSwarm:
                         logging.warning(f"{script} completed with output:\n{data}")
                 except Exception as exc:
                     logging.error(f"{script} generated an exception: {exc}")
-        self.concat_batches()
+        return self.concat_batches()
     
     def run_script(self, script):
         result = subprocess.Popen(
