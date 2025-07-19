@@ -484,7 +484,7 @@ if __name__ == '__main__':
                 "path_to_search_queries": "get_papers",
                 "path_to_relevant_papers": "check_gpu_infrastructure_1",
                 "path_to_chunks": "check_gpu_infrastructure_2",
-                "path_to_qa_pairs": "setup_yaml_config_file"
+                "path_to_qa_pairs": "setup_tuning_script"
             }
         )
         workflow.add_conditional_edges(
