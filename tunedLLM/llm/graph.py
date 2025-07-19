@@ -387,7 +387,7 @@ class Graph:
             self.stage_routing,
             {
                 "onboarding": "query_to_topic",
-                "topic": "query_to_search",
+                "topic": "topic_to_search",
                 "path_to_search_queries": "get_papers",
                 "path_to_relevant_papers": "check_gpu_infrastructure_1",
                 "path_to_chunks": "check_gpu_infrastructure_2",
