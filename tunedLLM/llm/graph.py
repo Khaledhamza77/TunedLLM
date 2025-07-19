@@ -349,6 +349,7 @@ class Graph:
     def setup_tuning_script(self, state: AgentState) -> AgentState:
         state['job'] = 'setting_up_tuning_script'
         script = """
+import os
 from tunedLLM.ft.trainer import Tuner
 
 if __name__ == '__main__':

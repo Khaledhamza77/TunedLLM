@@ -1,4 +1,3 @@
-import os
 import torch
 from trl import SFTConfig
 from trl import SFTTrainer
