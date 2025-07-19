@@ -354,7 +354,6 @@ tokenizer_name_or_path: google/gemma-3-1b-it
 model_revision: main
 torch_dtype: bfloat16
 bf16: true
-tf32: true
 output_dir: {self.root}/{state['run_id']}/tuning/gemma-3-1b-it-qlora-energyai
  
 # Dataset arguments
@@ -404,7 +403,7 @@ from transformers import set_seed
 from trl import TrlParser, ModelConfig, SFTConfig
 from tunedLLM.ft.trainer import ScriptArguments, Tuner
 
-if __name__ == __main__:
+if __name__ == '__main__':
     parser = TrlParser((ModelConfig, ScriptArguments, SFTConfig))
     model_args, script_args, training_args = parser.parse_args_and_config()
 

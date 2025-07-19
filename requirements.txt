@@ -1,6 +1,8 @@
 langchain
 langgraph
 graphviz
+hf_transfer
+bitsandbytes
 datasets==3.1.0
 ollama==0.5.1
 requests==2.32.4

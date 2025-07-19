@@ -18,7 +18,6 @@ class ScriptArguments:
     dataset_id_or_path: str
     dataset_splits: str = "train"
     tokenizer_name_or_path: str = None
-    spectrum_config_path: Optional[str] = None
 
 class Tuner:
     def __init__(
@@ -58,6 +57,9 @@ class Tuner:
             revision=self.model_args.model_revision,
             trust_remote_code=self.model_args.trust_remote_code,
         )
+        if self.tokenizer.pad_token is None: 
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
         self.model_kwargs = dict(
             revision=self.model_args.model_revision,
             trust_remote_code=self.model_args.trust_remote_code,
