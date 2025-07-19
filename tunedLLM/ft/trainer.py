@@ -3,7 +3,7 @@ from trl import SFTConfig
 from trl import SFTTrainer
 import torch.distributed as dist
 from datasets import load_dataset
-from peft import LoraConfig, PeftModel
+from peft import LoraConfig, PeftModel, PeftConfig
 from transformers import AutoTokenizer, AutoModelForCausalLM, AutoModelForImageTextToText, BitsAndBytesConfig
 
 class Tuner:
@@ -106,9 +106,10 @@ class Tuner:
         self.trainer.save_model()
         model = self.model_class.from_pretrained(self.model_id, low_cpu_mem_usage=True)
 
-        peft_model = PeftModel.from_pretrained(model, f"{self.output_dir}/adapter_config.json")
+        peft_config = PeftConfig.from_pretrained(f"{self.output_dir}/adapter_config.json")
+        peft_model = PeftModel.from_pretrained(config=peft_config)
         merged_model = peft_model.merge_and_unload()
         merged_model.save_pretrained("merged_model", safe_serialization=True, max_shard_size="2GB")
 
         processor = AutoTokenizer.from_pretrained(self.output_dir)
-        processor.save_pretrained(f"{self.root}/tuning/gemma-qlora-energyai-standalone")
+        processor.save_pretrained(f"{self.root}/tuning/gemma-qlora-energyai-standalone-tokenizer")
