@@ -9,6 +9,6 @@ requests==2.32.4
 pyarrow==20.0.0
 pandas==2.2.3
 trl==0.12.1
-transformers==4.46.3
+transformers==4.53.2
 torch==2.4.1
 tensorboard
