@@ -233,10 +233,10 @@ if __name__ == "__main__":
                             )
                         )
             except Exception as e:
-                train_dataset.append(dict())
+                #train_dataset.append(dict())
                 logging.error('Lost 1 chunk because of LLM output: ' + str(e))
         except Exception as e:
-            train_dataset.append(dict())
+            #train_dataset.append(dict())
             logging.error('Lost 1 chunk because of: ' + str(e))
     try:
         with open(path, 'w', encoding='utf-8') as f:
