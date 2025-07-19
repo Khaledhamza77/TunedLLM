@@ -106,7 +106,7 @@ class Tuner:
         self.trainer.save_model()
         model = self.model_class.from_pretrained(self.model_id, low_cpu_mem_usage=True)
 
-        peft_model = PeftModel.from_pretrained(model, self.output_dir)
+        peft_model = PeftModel.from_pretrained(model, f"{self.output_dir}/adapter_config.json")
         merged_model = peft_model.merge_and_unload()
         merged_model.save_pretrained("merged_model", safe_serialization=True, max_shard_size="2GB")
 
