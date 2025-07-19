@@ -157,6 +157,7 @@ class LLMSwarm:
     
     def setup_worker(self):
         self.worker_script = """#Auto-generated worker script
+import json
 import logging
 import pandas as pd
 from tunedLLM.llm.agent import LLM

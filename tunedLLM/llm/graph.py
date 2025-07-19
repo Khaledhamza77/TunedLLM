@@ -5,13 +5,15 @@ import subprocess
 import numpy as np
 import pandas as pd
 from uuid import uuid4
+from langgraph.graph import StateGraph, END
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
 from .agent import LLM
 from ..db.logs import Logs
 from .swarm import LLMSwarm
 from .state import AgentState
+from ..ft.trainer import Tuner
 from ..db.coredb import CoreDB
-from langgraph.graph import StateGraph, END
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 
 class Graph:
@@ -329,6 +331,9 @@ class Graph:
             return "parallel"
         else:
             return "single"
+        
+    def finetune(self, state: AgentState) -> AgentState:
+        return state
     
     def build_graph(self) -> StateGraph:
         workflow = StateGraph(AgentState)
