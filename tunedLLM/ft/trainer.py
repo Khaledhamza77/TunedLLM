@@ -51,6 +51,7 @@ class Tuner:
         self.logger.info(f'Training/evaluation parameters {self.training_args}')
 
         self.train_dataset = load_dataset('json', data_files=self.script_args.dataset_id_or_path, split='train')
+        self.logger.info(f'Loaded dataset with {len(self.train_dataset)} samples and the following features: {self.train_dataset.features}')
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.script_args.tokenizer_name_or_path if self.script_args.tokenizer_name_or_path else self.model_args.model_name_or_path,
