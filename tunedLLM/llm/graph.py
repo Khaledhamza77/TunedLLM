@@ -353,6 +353,7 @@ model_name_or_path: google/gemma-3-1b-it
 tokenizer_name_or_path: google/gemma-3-1b-it
 model_revision: main
 torch_dtype: bfloat16
+attn_implementation: eager
 bf16: true
 output_dir: {self.root}/{state['run_id']}/tuning/gemma-3-1b-it-qlora-energyai
  
@@ -417,7 +418,17 @@ if __name__ == '__main__':
             f.write(script)
         try:
             result = subprocess.Popen(
-                ['python', f"{self.root}/{state['run_id']}/tuning/script.py", '--config', state['yaml_file_path']],
+                [
+                    'accelerate',
+                    'launch',
+                    '--config_file',
+                    f'{self.root}/accelerate_config.yaml',
+                    '--num_processes',
+                    '4',
+                    f"{self.root}/{state['run_id']}/tuning/script.py",
+                    "--config",
+                    state['yaml_file_path']
+                ],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
