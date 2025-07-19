@@ -105,7 +105,8 @@ class LLMSwarm:
                     logging.error("Failed to concatenate json files: " + str(e))
             path = f"{self.root}/dataset.json"
             try:
-                training_dataset.to_json(path, orient="records")
+                with open(path, 'w', encoding='utf-8') as f:
+                    json.dump(training_dataset, f, indent=2)
                 logging.info(f"combined training dataset saved to {path}")
             except Exception as e:
                 logging.error(f"Failed to write json training set: {e}")
@@ -208,31 +209,35 @@ if __name__ == "__main__":
     train_system_message = "{self.train_prompt}"
     path = f"{self.root}/dataset_{i}.json"
     for idx, row in df.iterrows():
-        qa_pairs = llm.chunk_to_qa(
-            chunk=row['chunk'],
-            user_query="{self.user_query}",
-            title=row['title'],
-            abstract=row['abstract']
-        )
-        if len(qa_pairs) == 2 and isinstance(qa_pairs, dict):
-            qa_pairs = [qa_pairs]
-        if idx % 5 == 0 and idx != 0:
-            print('Worker '+str({i})+' Progress update: '+str(idx)+'/'+str(total))
         try:
-            if len(qa_pairs) != 0:
-                for qa_pair in qa_pairs:
-                    train_dataset.append(
-                        dict(
-                            messages = [
-                                dict(role = "system", content = train_system_message),
-                                dict(role = "user", content = qa_pair["question"]),
-                                dict(role = "assistant", content = qa_pair["answer"])
-                            ]
+            qa_pairs = llm.chunk_to_qa(
+                chunk=row['chunk'],
+                user_query="{self.user_query}",
+                title=row['title'],
+                abstract=row['abstract']
+            )
+            if len(qa_pairs) == 2 and isinstance(qa_pairs, dict):
+                qa_pairs = [qa_pairs]
+            if idx % 20 == 0 and idx != 0:
+                print('Worker '+str({i})+' Progress update: '+str(idx)+'/'+str(total))
+            try:
+                if len(qa_pairs) != 0:
+                    for qa_pair in qa_pairs:
+                        train_dataset.append(
+                            dict(
+                                messages = [
+                                    dict(role = "system", content = train_system_message),
+                                    dict(role = "user", content = qa_pair["question"]),
+                                    dict(role = "assistant", content = qa_pair["answer"])
+                                ]
+                            )
                         )
-                    )
+            except Exception as e:
+                train_dataset.append(dict())
+                logging.error('Lost 1 chunk because of LLM output: ' + str(e))
         except Exception as e:
             train_dataset.append(dict())
-            logging.error('Lost 1 chunk because of LLM output')
+            logging.error('Lost 1 chunk because of: ' + str(e))
     try:
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(train_dataset, f, indent=2)

@@ -331,8 +331,34 @@ class Graph:
             return "parallel"
         else:
             return "single"
+    
+    def cooldown(self, state: AgentState) -> AgentState:
+        try:
+            result = subprocess.run(
+                "docker stop $(docker ps -q)",
+                shell=True,
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            logging.info('All ollama workers closed successfully')
+        except Exception as e:
+            logging.error(f'Failed to close all ollama workers: {e}')
+        return state
+    
+    def setup_yaml_ft_config_file(self, state: AgentState) -> AgentState:
+        return state
         
     def finetune(self, state: AgentState) -> AgentState:
+        return state
+    
+    def merge_weights(self, state: AgentState) -> AgentState:
+        return state
+    
+    def convert_model(self, state: AgentState) -> AgentState:
+        return state
+    
+    def benchmark(self, state: AgentState) -> AgentState:
         return state
     
     def build_graph(self) -> StateGraph:
@@ -381,6 +407,30 @@ class Graph:
             "parallelized_chunks_to_qa",
             self.parallelized_chunks_to_qa,
         )
+        workflow.add_node(
+            "cooldown",
+            self.cooldown
+        )
+        workflow.add_node(
+            "setup_yaml_config_file",
+            self.setup_yaml_ft_config_file
+        )
+        workflow.add_node(
+            "tune",
+            self.finetune
+        )
+        workflow.add_node(
+            "merge_LoRA_weights_for_standalone_model",
+            self.merge_weights
+        )
+        workflow.add_node(
+            "Convert_model_to_work_with_Ollama",
+            self.convert_model
+        )
+        workflow.add_node(
+            "benchmark",
+            self.benchmark
+        )
         workflow.set_entry_point("onboarding")
         workflow.add_conditional_edges(
             "onboarding",
@@ -391,7 +441,7 @@ class Graph:
                 "path_to_search_queries": "get_papers",
                 "path_to_relevant_papers": "check_gpu_infrastructure_1",
                 "path_to_chunks": "check_gpu_infrastructure_2",
-                "path_to_qa_pairs": END
+                "path_to_qa_pairs": "tune"
             }
         )
         workflow.add_conditional_edges(
@@ -423,8 +473,13 @@ class Graph:
                 "parallel": "parallelized_chunks_to_qa"
             }
         )
-        workflow.add_edge("chunks_to_qa", END)
-        workflow.add_edge("parallelized_chunks_to_qa", END)
+        workflow.add_edge("chunks_to_qa", "cooldown")
+        workflow.add_edge("parallelized_chunks_to_qa", "cooldown")
+        workflow.add_edge("cooldown", "setup_yaml_config_file")
+        workflow.add_edge("tune", "merge_LoRA_weights_for_standalone_model")
+        workflow.add_edge("merge_LoRA_weights_for_standalone_model", "Convert_model_to_work_with_Ollama")
+        workflow.add_edge("Convert_model_to_work_with_Ollama", "benchmark")
+        workflow.add_edge("benchmark", END)
         try:
             graph = workflow.compile()
             logging.info("Graph compiled successfully.")

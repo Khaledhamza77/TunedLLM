@@ -61,7 +61,7 @@ class Tuner:
             trust_remote_code=self.model_args.trust_remote_code,
             attn_implementation=self.model_args.attn_implementation,
             torch_dtype=self.model_args.torch_dtype if self.model_args.torch_dtype in ['auto', None] else getattr(torch, self.model_args.torch_dtype),
-            use_cache=False if self.training_args.gradient_checkpointing else True, # Whether
+            use_cache=False if self.training_args.gradient_checkpointing else True,
             low_cpu_mem_usage=True if not strtobool(os.environ.get("ACCELERATE_USE_DEEPSPEED", "false")) else None
         )
 

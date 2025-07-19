@@ -5,7 +5,7 @@ import logging
 class LLM:
     def __init__(self, root_dir: str = None, model_name: str = "gemma3:1b", port: str = "11434"):
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-        self.client = ollama.Client(host=f"http://localhost:{port}")
+        self.client = ollama.Client(host=f"http://localhost:{port}", timeout=30.0)
         self.root = root_dir
         self.model_name = model_name
         logging.info(f"LLM client initialized with model {self.model_name} on port {port}")
