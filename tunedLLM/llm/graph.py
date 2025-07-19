@@ -418,7 +418,7 @@ if __name__ == __main__:
             f.write(script)
         try:
             result = subprocess.Popen(
-                ['python', '-u', f"{self.root}/{state['run_id']}/tuning/script.py", '--config', state['yaml_file_path']],
+                ['python', f"{self.root}/{state['run_id']}/tuning/script.py", '--config', state['yaml_file_path']],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
