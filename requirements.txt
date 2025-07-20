@@ -13,3 +13,4 @@ transformers==4.53.2
 torch==2.4.1
 tensorboard
 peft
+pandas==1.5.3
