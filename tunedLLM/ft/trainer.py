@@ -1,5 +1,6 @@
 import time
 import torch
+import shutil
 from trl import SFTConfig
 from trl import SFTTrainer
 import torch.distributed as dist
@@ -117,3 +118,4 @@ class Tuner:
 
         processor = AutoTokenizer.from_pretrained(self.output_dir)
         processor.save_pretrained(f"{self.root}/tuning/gemma-qlora-energyai-standalone-tokenizer")
+        shutil.rmtree(self.output_dir)
