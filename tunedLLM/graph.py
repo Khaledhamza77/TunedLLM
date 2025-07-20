@@ -24,7 +24,7 @@ class Graph:
             root_dir: str, 
             model_name: str = "gemma3:1b", 
             port: str = "11434",
-            parallel_jobs: int = None,
+            parallel_jobs: int = 80,
             finetune: bool = True,
             rag: bool = False
         ):
