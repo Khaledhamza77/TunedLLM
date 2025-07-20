@@ -424,7 +424,7 @@ if __name__ == '__main__':
                 state['standalone_model_path'] = ''
                 return state
             state['job_status'] = 'success'
-            state['standalone_model_path'] = f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-it-qlora-energyai"
+            state['standalone_model_path'] = f"{self.root}/{state['run_id']}/tuning/gemma-3-1b-it-qlora-energyai-standalone"
             self.logs.update('standalone_model_path', state)
             self.logs.save()
             logging.info("Finished tuning")
