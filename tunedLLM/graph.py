@@ -534,7 +534,7 @@ if __name__ == '__main__':
             self.stage_routing,
             {
                 "exit_graph": "exiting_checkpoint",
-                "continue": "check_gpu_infrastructure_1"
+                "continue_graph": "check_gpu_infrastructure_1"
             }
         )
         workflow.add_conditional_edges(
@@ -550,7 +550,7 @@ if __name__ == '__main__':
             self.stage_routing,
             {
                 "exit_graph": "exiting_checkpoint",
-                "continue": "check_gpu_infrastructure_2"
+                "continue_graph": "check_gpu_infrastructure_2"
             }
         )
         workflow.add_conditional_edges(
@@ -558,7 +558,7 @@ if __name__ == '__main__':
             self.stage_routing,
             {
                 "exit_graph": "exiting_checkpoint",
-                "continue": "check_gpu_infrastructure_2"
+                "continue_graph": "check_gpu_infrastructure_2"
             }
         )
         workflow.add_conditional_edges(
@@ -576,7 +576,7 @@ if __name__ == '__main__':
             self.stage_routing,
             {
                 "exit_graph": "exiting_checkpoint",
-                "continue": "setup_tuning_script"
+                "continue_graph": "setup_tuning_script"
             }
         )
         workflow.add_edge("setup_tuning_script", "tune")
