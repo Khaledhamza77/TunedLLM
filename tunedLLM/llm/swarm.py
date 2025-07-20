@@ -198,7 +198,7 @@ if __name__ == "__main__":
                     abstract = row['abstract']
                 )
             )
-        print('Worker '+str({i}+1)+' Progress update: '+str(idx)+'/'+str(total))
+        print('Worker '+str({i})' Progress update: '+str(idx+1)+'/'+str(total))
     try:
         result_df = pd.DataFrame(result); del result
         result_df.to_parquet(f"{self.root}/chunks_{i}.parquet", index=False)
