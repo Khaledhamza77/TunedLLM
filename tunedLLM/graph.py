@@ -531,7 +531,7 @@ if __name__ == '__main__':
         workflow.add_edge("query_to_search", "get_papers")
         workflow.add_conditional_edges(
             "get_papers",
-            self.stage_routing,
+            self.stopping_router,
             {
                 "exit_graph": "exiting_checkpoint",
                 "continue_graph": "check_gpu_infrastructure_1"
@@ -547,7 +547,7 @@ if __name__ == '__main__':
         )
         workflow.add_conditional_edges(
             "chunk",
-            self.stage_routing,
+            self.stopping_router,
             {
                 "exit_graph": "exiting_checkpoint",
                 "continue_graph": "check_gpu_infrastructure_2"
@@ -555,7 +555,7 @@ if __name__ == '__main__':
         )
         workflow.add_conditional_edges(
             "parallelized_chunk",
-            self.stage_routing,
+            self.stopping_router,
             {
                 "exit_graph": "exiting_checkpoint",
                 "continue_graph": "check_gpu_infrastructure_2"
@@ -573,7 +573,7 @@ if __name__ == '__main__':
         workflow.add_edge("parallelized_chunks_to_qa", "cooldown")
         workflow.add_conditional_edges(
             "cooldown",
-            self.stage_routing,
+            self.stopping_router,
             {
                 "exit_graph": "exiting_checkpoint",
                 "continue_graph": "setup_tuning_script"
