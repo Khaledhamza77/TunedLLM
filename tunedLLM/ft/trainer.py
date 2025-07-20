@@ -1,3 +1,4 @@
+import time
 import torch
 from trl import SFTConfig
 from trl import SFTTrainer
@@ -104,6 +105,9 @@ class Tuner:
     def tune(self):
         self.trainer.train()
         self.trainer.save_model()
+        del self.trainer
+        torch.cuda.empty_cache()
+        time.sleep(30)
         model = self.model_class.from_pretrained(self.model_id, low_cpu_mem_usage=True)
 
         peft_config = PeftConfig.from_pretrained(self.output_dir)
