@@ -9,8 +9,9 @@ class AgentState(TypedDict):
     finetune: bool | None
     rag: bool | None
     starting_node: str | None
+    early_exit_at: Literal['get_papers_and_their_metadata', 'chunk_and_score', 'parallelized_chunk_and_score', 'after_chunks_to_q/a_pairstuning', 'parallelized_chunks_to_q/a_pairs', 'finetuning_model'] | None
 
-    job: str | None
+    job: Literal['infer_topic_of_query', 'query_to_search', 'get_papers_and_their_metadata', 'chunk_and_score', 'parallelized_chunk_and_score', 'chunks_to_q/a_pairs', 'parallelized_chunks_to_q/a_pairs', 'setting_up_tuning_script', 'finetuning_model'] | None
     job_status: Literal['success', 'failure'] | None
     path_to_search_queries: str | None
     path_to_relevant_papers: str | None

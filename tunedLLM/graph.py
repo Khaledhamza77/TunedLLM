@@ -26,7 +26,8 @@ class Graph:
             port: str = "11434",
             parallel_jobs: int = 40,
             finetune: bool = True,
-            rag: bool = False
+            rag: bool = False,
+            exit_at: str = None
         ):
         self.user_query = user_query
         self.root = root_dir
@@ -37,6 +38,7 @@ class Graph:
         self.total_docs = total_docs
         self.diversify = diversify
         self.parallel_jobs = parallel_jobs
+        self.exit_at = exit_at
         logging.getLogger('ollama').setLevel(logging.WARNING)
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
@@ -57,6 +59,16 @@ class Graph:
             return 'finetuning_model', 'success'
         elif stage == 'benchmark_results_path':
             return 'benchmarking_model', 'success'
+    
+    def early_stopping(self, state: AgentState) -> AgentState:
+        state['job'] = f'early_exiting'
+        return state
+    
+    def stopping_router(self, state: AgentState) -> str:
+        if not state['early_exit_at']:
+            if state['early_exit_at'] == state['job']:
+                return 'exit_graph'
+        return "continue_graph"
     
     def onboarding(self, state: AgentState) -> AgentState:
         self.logs = Logs(self.root)
@@ -357,6 +369,7 @@ class Graph:
         return state
     
     def setup_tuning_script(self, state: AgentState) -> AgentState:
+        os.makedirs(f"{self.root}/{state['run_id']}/tuning", exist_ok=True)
         state['job'] = 'setting_up_tuning_script'
         script = """
 import os
@@ -486,6 +499,10 @@ if __name__ == '__main__':
             "benchmark",
             self.benchmark
         )
+        workflow.add_node(
+            "exiting_checkpoint",
+            self.early_stopping
+        )
         workflow.set_entry_point("onboarding")
         workflow.add_conditional_edges(
             "onboarding",
@@ -512,7 +529,14 @@ if __name__ == '__main__':
         )
         workflow.add_edge("topic_to_search", "get_papers")
         workflow.add_edge("query_to_search", "get_papers")
-        workflow.add_edge("get_papers", "check_gpu_infrastructure_1")
+        workflow.add_conditional_edges(
+            "get_papers",
+            self.stage_routing,
+            {
+                "exit_graph": "exiting_checkpoint",
+                "continue": "check_gpu_infrastructure_1"
+            }
+        )
         workflow.add_conditional_edges(
             "check_gpu_infrastructure_1",
             self.chunking_routing,
@@ -521,8 +545,22 @@ if __name__ == '__main__':
                 "parallel": "parallelized_chunk"
             }
         )
-        workflow.add_edge("chunk", "check_gpu_infrastructure_2")
-        workflow.add_edge("parallelized_chunk", "check_gpu_infrastructure_2")
+        workflow.add_conditional_edges(
+            "chunk",
+            self.stage_routing,
+            {
+                "exit_graph": "exiting_checkpoint",
+                "continue": "check_gpu_infrastructure_2"
+            }
+        )
+        workflow.add_conditional_edges(
+            "parallelized_chunk",
+            self.stage_routing,
+            {
+                "exit_graph": "exiting_checkpoint",
+                "continue": "check_gpu_infrastructure_2"
+            }
+        )
         workflow.add_conditional_edges(
             "check_gpu_infrastructure_2",
             self.qa_pairs_routing,
@@ -533,10 +571,18 @@ if __name__ == '__main__':
         )
         workflow.add_edge("chunks_to_qa", "cooldown")
         workflow.add_edge("parallelized_chunks_to_qa", "cooldown")
-        workflow.add_edge("cooldown", "setup_tuning_script")
+        workflow.add_conditional_edges(
+            "cooldown",
+            self.stage_routing,
+            {
+                "exit_graph": "exiting_checkpoint",
+                "continue": "setup_tuning_script"
+            }
+        )
         workflow.add_edge("setup_tuning_script", "tune")
         workflow.add_edge("tune", "benchmark")
         workflow.add_edge("benchmark", END)
+        workflow.add_edge('exiting_checkpoint', END)
         try:
             graph = workflow.compile()
             logging.info("Graph compiled successfully.")
@@ -557,6 +603,7 @@ if __name__ == '__main__':
         state["finetune"] = self.finetune
         state["rag"] = self.rag
         state["diversify"] = self.diversify
+        state['early_exit_at'] = self.exit_at
         try:
             self.llm = LLM(root_dir=self.root, model_name=self.model_name, port=self.port)
         except Exception as e:
