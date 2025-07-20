@@ -70,7 +70,7 @@ class CoreDB:
         except Exception as e:
             logging.error(f"Error saving metadata to parquet: {e}")
     
-    def concat_metadata(self):
+    def concat_metadata(self, total_docs: int):
         parquet_files = sorted(glob.glob(f"{self.root}/data/metadata_*.parquet"))
         if not parquet_files:
             logging.warning("No metadata parquet files found to concatenate.")
@@ -81,6 +81,8 @@ class CoreDB:
         combined_df.drop_duplicates(subset=['title'], inplace=True)
         combined_df.reset_index(drop=True, inplace=True)
         output_path = f"{self.root}/data/metadata.parquet"
+        if len(combined_df) > total_docs:
+            combined_df = combined_df.iloc[:total_docs]
         combined_df.to_parquet(output_path, index=False)
         logging.info(f"Combined metadata saved to {output_path}")
 

@@ -23,9 +23,9 @@ class LLMSwarm:
         self.chunk_to_qa = chunk_to_qa
         self.user_query = user_query
         self.model_name = model_name
-        self.n_jobs = 40
+        self.n_jobs = 80
         self.train_prompt = train_prompt
-        self.ports = list(range(11434, 11474))
+        self.ports = list(range(11434, 11513))
         self.executables = []
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -33,7 +33,7 @@ class LLMSwarm:
         self.parallelize(qa=qa)
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_jobs) as executor:
             futures = {executor.submit(self.run_script, script): script for script in self.executables}
-            logging.info('Started chunking process ...')
+            logging.info('Started chunking / qa-pairs generation process ...')
             for future in concurrent.futures.as_completed(futures):
                 script = futures[future]
                 try:
@@ -126,6 +126,8 @@ class LLMSwarm:
         if qa:
             df = df[df['relevance_class'] == 'a']
         num_rows = len(df)
+        if num_rows < self.n_jobs:
+            self.n_jobs = num_rows
         rows_per_split = num_rows // self.n_jobs
         remainder = num_rows % self.n_jobs
         start_idx = 0
