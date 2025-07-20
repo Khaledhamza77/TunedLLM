@@ -24,6 +24,7 @@ class Graph:
             root_dir: str, 
             model_name: str = "gemma3:1b", 
             port: str = "11434",
+            parallel_jobs: int = None,
             finetune: bool = True,
             rag: bool = False
         ):
@@ -35,6 +36,7 @@ class Graph:
         self.rag = rag
         self.total_docs = total_docs
         self.diversify = diversify
+        self.parallel_jobs = parallel_jobs
         logging.getLogger('ollama').setLevel(logging.WARNING)
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     
@@ -254,7 +256,8 @@ class Graph:
             model_name=state['model_name'],
             user_query=state['user_query'],
             root_dir=f"{self.root}/{state['run_id']}/data",
-            chunk_scoring=state['path_to_relevant_papers']
+            chunk_scoring=state['path_to_relevant_papers'],
+            parallel_jobs=self.parallel_jobs
         )
         try:
             state["path_to_chunks"] = swarm.run()
@@ -313,7 +316,8 @@ class Graph:
             user_query=state['user_query'],
             root_dir=f"{self.root}/{state['run_id']}/data",
             chunk_to_qa=state['path_to_chunks'],
-            train_prompt=train_prompt
+            train_prompt=train_prompt,
+            parallel_jobs=self.parallel_jobs
         )
         try:
             state["path_to_qa_pairs"] = swarm.run(qa=True)

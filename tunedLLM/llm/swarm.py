@@ -16,14 +16,15 @@ class LLMSwarm:
             root_dir: str = None, 
             chunk_scoring: str = None,
             chunk_to_qa: str = None,
-            train_prompt: str = None
+            train_prompt: str = None,
+            parallel_jobs: int = None
         ):
         self.root = root_dir
         self.chunk_scoring = chunk_scoring
         self.chunk_to_qa = chunk_to_qa
         self.user_query = user_query
         self.model_name = model_name
-        self.n_jobs = 80
+        self.n_jobs = parallel_jobs
         self.train_prompt = train_prompt
         self.ports = list(range(11434, 11513))
         self.executables = []
