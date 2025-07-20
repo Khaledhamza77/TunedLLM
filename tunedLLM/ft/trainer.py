@@ -108,7 +108,7 @@ class Tuner:
         self.trainer.save_model()
         del self.trainer
         torch.cuda.empty_cache()
-        time.sleep(30)
+        time.sleep(60)
         model = self.model_class.from_pretrained(self.model_id, low_cpu_mem_usage=True)
 
         peft_config = PeftConfig.from_pretrained(self.output_dir)
