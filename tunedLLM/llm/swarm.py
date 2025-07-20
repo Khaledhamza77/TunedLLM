@@ -187,8 +187,6 @@ if __name__ == "__main__":
         with open(f"{self.root}/full_texts/"+str(row['id'])+".txt", 'r', encoding='utf-8') as f:
             full_text = f.read()
         chunks = text_splitter.split_text(full_text)
-        if idx % 1 == 0:
-            print('Worker '+str({i})+' Progress update: '+str(idx)+'/'+str(total))
         for chk_idx, chunk in enumerate(chunks):
             result.append(
                 dict(
@@ -200,6 +198,7 @@ if __name__ == "__main__":
                     abstract = row['abstract']
                 )
             )
+        print('Worker '+str({i}+1)+' Progress update: '+str(idx)+'/'+str(total))
     try:
         result_df = pd.DataFrame(result); del result
         result_df.to_parquet(f"{self.root}/chunks_{i}.parquet", index=False)
