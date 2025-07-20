@@ -146,7 +146,7 @@ class Graph:
         try:
             for i, query in enumerate(search_queries_list):
                 core.scroll(query, ceiling=ceilings[i], i=i)
-            core.concat_metadata()
+            core.concat_metadata(total_docs=self.total_docs)
             state["path_to_relevant_papers"] = f"{self.root}/{state['run_id']}/data/metadata.parquet"
             state["job_status"] = "success"
             self.logs.update('path_to_relevant_papers', state)
