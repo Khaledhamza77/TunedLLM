@@ -24,7 +24,7 @@ class Graph:
             root_dir: str, 
             model_name: str = "gemma3:1b", 
             port: str = "11434",
-            parallel_jobs: int = 40,
+            parallel_jobs: int = 0,
             finetune: bool = True,
             rag: bool = False,
             exit_at: str = None
@@ -203,7 +203,7 @@ class Graph:
         except RuntimeError as e:
             logging.error(f"Error checking GPU info: {e}")
 
-        if count == 4:
+        if count == 4 or self.parallel_jobs > 0:
             if state['job'] == "get_papers_and_their_metadata":
                 state["job"] = "gpu_count"
                 state["job_status"] = "success"
