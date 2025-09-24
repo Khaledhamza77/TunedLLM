@@ -4,7 +4,7 @@
 The TunedLLM package is designed to create an automated agentic workflow which is able to take a user's query and transform it into a tuned LLM either through a retrieval system or through straightforwardly fine-tuning the chosen model. This package relies on Ollama, LangChain, LangGraph, and more. The setup would be the most complex part, but I will do my best to provide the best setup strategy.
 
 ## Features
-![Alt text](./graph.png
+![Alt text](./graph.png)
 
 ## Setup
 
