@@ -1,7 +1,12 @@
 # TunedLLM
-Agentic AI system for making your LLM tuned with latest research papers relevant to any query
 
-# Setup
+## Overview
+The TunedLLM package is designed to create an automated agentic workflow which is able to take a user's query and transform it into a tuned LLM either through a retrieval system or through straightforwardly fine-tuning the chosen model. This package relies on Ollama, LangChain, LangGraph, and more. The setup would be the most complex part, but I will do my best to provide the best setup strategy.
+
+## Features
+![Alt text](./graph.png
+
+## Setup
 
 Get API key from CORE database: https://core.ac.uk/services/api#what-is-included
 Follow the instructions step by step and then save the api key string in .txt file called apikey.txt in your working directory.
