@@ -4,8 +4,6 @@
 The TunedLLM package is designed to create an automated parallelized agentic workflow which is able to take a user's query and transform it into a tuned LLM either through a retrieval system or through straightforwardly fine-tuning the chosen model. This package relies on Ollama, LangChain, LangGraph, and more. The setup would be the most complex part, but I will do my best to provide the best setup strategy.
 
 ## Features
-![Alt text](./graph.png)
-
 This package is able to perform the following:
 1. **Query Augmentation**: Infer the topic of the query and use the query and topic to create a search query for the CORE database to get relevant research papers. There is an optional step of creating multiple search queries regarding to cover more ground to search the database with.
 2. **Research Paper Retrieval**: CORE database is queried with the search query(s) prepared in the previous node. This stage has retry logic and error handling to avoid faliure.
@@ -16,23 +14,64 @@ This package is able to perform the following:
 6. **Fine-Tuning**: Using transformers and PyTorch an LLM is fine-tuned (PEFT).
 5. **Evaluation**: The finetuned model or the RAG system are evaluated and results are saved (TODO)
 
+![Alt text](./graph.png)
+
+## Installation
+To get started with TunedLLM, you can install it directly from this GitHub repository using pip.
+1. Ensure Git is installed on your system
+2. Install TunedLLM using the following command:
+```bash
+pip install git+https://github.com/Khaledhamza77/TunedLLM
+```
+
 ## Setup
+The setup for this package has three parts:
+1. Access to CORE database
+2. Setting up Ollama and enabling parallel workers
+3. Setting up HF and PyTorch for GPU-accelerated and parallelized model finetuning
 
-Get API key from CORE database: https://core.ac.uk/services/api#what-is-included
+### CORE Database
+Get the API key from CORE database: https://core.ac.uk/services/api#what-is-included
 Follow the instructions step by step and then save the api key string in .txt file called apikey.txt in your working directory.
+
+### Ollama
+This setup you will need Docker, so make sure docker is installed and ready to work with on your system.
+
+The first step would be pulling the Ollama docker image to your local system and creating a shared volume such that there will be no need to replicate model files and other storage dependencies for all ollama workers.
 ```bash
-    docker pull ollama/ollama
+SHARED_OLLAMA_VOLUME="ollama_models_shared"
+echo "Creating shared Ollama model volume: $SHARED_OLLAMA_VOLUME"
+docker volume create $SHARED_OLLAMA_VOLUME
+docker pull ollama/ollama
 ```
+The following step needs your personal judgement so make sure this is ready in the same way Git and Docker was. Based on the number of GPUs and the GPU memory each ollama worker uses while running a model, you will choose the CONTAINERS_PER_GPU parameter. I used Gemma 1B and it uses around 1GB of GPU memory when I am using it on a T4 NVIDIA GPU. So I can choose to have 10 workers per GPU (I had 4),  and that would leave 5GB buffer on my GPU since this GPU had 15GB of memory.
 ```bash
-    docker run -d --gpus '"device=0"' -v ollama_gpu0:/root/.ollama -p 11434:11434 --name ollama_gpu0 ollama/ollama
-    docker run -d --gpus '"device=1"' -v ollama_gpu1:/root/.ollama -p 11435:11434 --name ollama_gpu1 ollama/ollama
-    docker run -d --gpus '"device=2"' -v ollama_gpu2:/root/.ollama -p 11436:11434 --name ollama_gpu2 ollama/ollama
-    docker run -d --gpus '"device=3"' -v ollama_gpu3:/root/.ollama -p 11437:11434 --name ollama_gpu3 ollama/ollama
+SHARED_OLLAMA_VOLUME="ollama_models_shared"
+BASE_PORT=11434
+NUM_GPUS=1
+CONTAINERS_PER_GPU=10
+TOTAL_CONTAINERS=$((NUM_GPUS * CONTAINERS_PER_GPU))
+for i in $(seq 0 $((TOTAL_CONTAINERS - 1))); do
+    GPU_DEVICE=$((i / CONTAINERS_PER_GPU))
+    HOST_PORT=$((BASE_PORT + i))
+    CONTAINER_NAME="ollama_worker_${i}"
+
+    echo "Starting container ${CONTAINER_NAME} on GPU ${GPU_DEVICE} with host port ${HOST_PORT}..."
+    docker run -d \
+        --gpus "device=${GPU_DEVICE}" \
+        -v ${SHARED_OLLAMA_VOLUME}:/root/.ollama \
+        -p ${HOST_PORT}:11434 \
+        --name ${CONTAINER_NAME} \
+        ollama/ollama
+    if [ $? -ne 0 ]; then
+        echo "Error starting container ${CONTAINER_NAME}. Continuing with others."
+    fi
+done
 ```
 
 ```bash
-    docker exec -it ollama_gpu0 ollama pull gemma3:1b
-    docker exec -it ollama_gpu1 ollama pull gemma3:1b
-    docker exec -it ollama_gpu2 ollama pull gemma3:1b
-    docker exec -it ollama_gpu3 ollama pull gemma3:1b
+docker exec -it ollama_gpu0 ollama pull gemma3:1b
+docker exec -it ollama_gpu1 ollama pull gemma3:1b
+docker exec -it ollama_gpu2 ollama pull gemma3:1b
+docker exec -it ollama_gpu3 ollama pull gemma3:1b
 ```
