@@ -44,11 +44,11 @@ echo "Creating shared Ollama model volume: $SHARED_OLLAMA_VOLUME"
 docker volume create $SHARED_OLLAMA_VOLUME
 docker pull ollama/ollama
 ```
-The following step needs your personal judgement so make sure this is ready in the same way Git and Docker was. Based on the number of GPUs and the GPU memory each ollama worker uses while running a model, you will choose the CONTAINERS_PER_GPU parameter. I used Gemma 1B and it uses around 1GB of GPU memory when I am using it on a T4 NVIDIA GPU. So I can choose to have 10 workers per GPU (I had 4),  and that would leave 5GB buffer on my GPU since this GPU had 15GB of memory.
+The following step needs your personal judgement so make sure this is ready in the same way Git and Docker was. Based on the number of GPUs and the GPU memory each ollama worker uses while running a model, you will choose the CONTAINERS_PER_GPU parameter. I used Gemma 1B and it uses around 1GB of GPU memory when I am using it on a T4 NVIDIA GPU. So I can choose to have 10 workers, for example, per GPU (I had 4), and that would leave 5GB buffer on my GPU since this GPU had 15GB of memory. So in total I would have 40 ollama workers ready for me to use in the parallelizable processes of 1) chunking and scoring or 2) generating q/a pairs. The following code will create those workers and set the appropriate ports which will be called using ollama later through the package.
 ```bash
 SHARED_OLLAMA_VOLUME="ollama_models_shared"
 BASE_PORT=11434
-NUM_GPUS=1
+NUM_GPUS=4
 CONTAINERS_PER_GPU=10
 TOTAL_CONTAINERS=$((NUM_GPUS * CONTAINERS_PER_GPU))
 for i in $(seq 0 $((TOTAL_CONTAINERS - 1))); do
@@ -68,10 +68,18 @@ for i in $(seq 0 $((TOTAL_CONTAINERS - 1))); do
     fi
 done
 ```
-
+Finally, pull your desired model using any worker and (thanks to the shared volume) all other workers will have access to that model and can run it on the GPU assigned to the worker.
 ```bash
-docker exec -it ollama_gpu0 ollama pull gemma3:1b
-docker exec -it ollama_gpu1 ollama pull gemma3:1b
-docker exec -it ollama_gpu2 ollama pull gemma3:1b
-docker exec -it ollama_gpu3 ollama pull gemma3:1b
+docker exec -it ollama_worker_0 ollama pull gemma3:1b
 ```
+
+### HuggingFace and PyTorch
+This could either be a nightmare or a walk in the park. You can use AWS Deep Learning Containers with a PyTorch and CUDA setup ready to run this package from within, otherwise you'd have to download PyTorch, CUDA, and all their dependencies suitable for you GPU. For HuggingFace, you can generate a token from here: https://huggingface.co/docs/hub/security-tokens and use it below:
+```bash
+from huggingface_hub import login
+ 
+login(token=YOUR_HF_TOKEN, add_to_git_credential=True)
+```
+Now you're READY!
+
+## Demo
