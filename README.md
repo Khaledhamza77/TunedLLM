@@ -167,12 +167,12 @@ tunedLLM/
 │   ├── __init__.py
 │   ├── knowledgebase.py
 │   └── retriever.py
-├── .gitignore
-├── graph.png
-├── LICENSE
-├── setup.py
-├── requirements.txt
-└── README.md
+.gitignore
+graph.png
+LICENSE
+setup.py
+requirements.txt
+README.md
 ```
 
 ## Contact Information
