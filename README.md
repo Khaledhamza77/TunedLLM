@@ -83,3 +83,97 @@ login(token=YOUR_HF_TOKEN, add_to_git_credential=True)
 Now you're READY!
 
 ## Demo
+Here is how to use TunedLLM:
+```python
+import os
+from tunedLLM.graph import Graph
+# Assuming your message files are in a folder like 'incoming_messages'
+# You would likely have a loop or logic to read these files and feed them to the CRM_application
+# For demonstration, CRM_application().run() expects to find these files based on its internal logic.
+# Make sure your 'customer_relations_management' folder will be created in the current working directory.
+
+if __name__ == "__main__":
+    gr = Graph(
+        diversify=False, #Turns on or off the query diversification step
+        total_docs=200, #sets a soft maximum for docs retrieved per query
+        parallel_jobs=40, #depends on your total amount of workers you prepared in your setup
+        user_query='I want to know more about renewable energy in Egypt', # Your query is expected to be of an inquisitive nature for best results
+        root_dir=f'{os.getcwd()}/tunedLLM'
+    )
+    gr.run()
+```
+Here is what you should expect:
+```bash
+home/
+├── tunedLLM/
+│   ├── 03c1ef00-8885-4be0-9ff6-a26af32fec19/ #This is an indentifier used to track this job and you will find the specs of this job in the logs.csv under this identifier
+│   │   ├── data/
+│   │   │   ├── full_texts/
+│   │   │   │   ├── 213112.txt
+│   │   │   │   ├── 235012.txt
+│   │   │   │   ├── ...
+│   │   │   │   └── 158331935.txt
+│   │   │   ├── jobs/
+│   │   │   │   ├── batch_0/
+│   │   │   │   │   ├── data.parquet
+│   │   │   │   │   └── worker.py
+│   │   │   │   ├── ...
+│   │   │   │   └── batch_39/
+│   │   │   │       ├── data.parquet
+│   │   │   │       └── worker.py
+│   │   │   ├── chunks.parquet
+│   │   │   ├── dataset.json
+│   │   │   ├── metadata.parquet
+│   │   │   └── search_queries.json
+│   │   └── tuning/
+│   │       ├── gemma-qlora-standalone/
+│   │       │   ├── config.json
+│   │       │   ├── generation_config.json
+│   │       │   ├── model-00001-of-00003.safetensors
+│   │       │   ├── model-00002-of-00003.safetensors
+│   │       │   ├── model-00003-of-00003.safetensors
+│   │       │   └── model.safetensors.index.json
+│   │       ├── gemma-qlora-standalone-tokenizer/
+│   │       │   ├── chat_template.jinja
+│   │       │   ├── special_tokens_map.json
+│   │       │   ├── tokenizer_config.json
+│   │       │   └── tokenizer.json
+│   │       └── script.py
+│   ├── graph_image.png
+│   └── logs.csv
+└── apikey.txt
+```
+
+## Package Structure
+
+```bash
+tunedLLM/
+├── __init__.py
+├── graph.py
+├── db/
+│   ├── __init__.py
+│   ├── coredb.py
+│   └── logs.py
+├── ft/
+│   ├── __init__.py
+│   ├── testing.py
+│   └── trainer.py
+├── llm/
+│   ├── __init__.py
+│   ├── agent.py
+│   ├── state.py
+│   └── swarm.py
+├── rag/
+│   ├── __init__.py
+│   ├── knowledgebase.py
+│   └── retriever.py
+├── .gitignore
+├── graph.png
+├── LICENSE
+├── setup.py
+├── requirements.txt
+└── README.md
+```
+
+## Contact Information
+For any inquiries or potential contribution please contact me at: khaledhamza@aucegypt.edu
