@@ -6,7 +6,7 @@ The TunedLLM package is designed to create an automated parallelized agentic wor
 ## Features
 ![Alt text](./graph.png)
 
-This package is able to perform the following:
+- This package is able to perform the following:
     1. Infer the topic of the query and use the query and topic to create a search query for the CORE database to get relevant research papers. There is an optional step of creating multiple search queries regarding to cover more ground to search the database with.
     2. CORE database is queried with the search query(s) prepared in the previous node. This stage has retry logic and error handling to avoid faliure.
     3. The response retrieved from CORE is parsed and chunked where every chunk is given a "coherence score" which is provided by an agent.
