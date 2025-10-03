@@ -87,10 +87,7 @@ Here is how to use TunedLLM:
 ```python
 import os
 from tunedLLM.graph import Graph
-# Assuming your message files are in a folder like 'incoming_messages'
-# You would likely have a loop or logic to read these files and feed them to the CRM_application
-# For demonstration, CRM_application().run() expects to find these files based on its internal logic.
-# Make sure your 'customer_relations_management' folder will be created in the current working directory.
+# Assuming all setup is complete and all API keys are defined, now you can run the following graph
 
 if __name__ == "__main__":
     gr = Graph(
